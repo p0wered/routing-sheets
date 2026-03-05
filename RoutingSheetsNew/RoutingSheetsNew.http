@@ -1,0 +1,297 @@
+@baseUrl = https://localhost:7001
+
+### ===== СТАТУСЫ (только чтение) =====
+
+### Получить все статусы маршрутных листов
+GET {{baseUrl}}/api/RoutingSheetStatuses
+
+### Получить статус МЛ по ID
+GET {{baseUrl}}/api/RoutingSheetStatuses/1
+
+### Получить все статусы операций
+GET {{baseUrl}}/api/OperationStatuses
+
+### Получить статус операции по ID
+GET {{baseUrl}}/api/OperationStatuses/1
+
+
+### ===== ЕДИНИЦЫ ИЗМЕРЕНИЯ =====
+
+### Получить все единицы измерения
+GET {{baseUrl}}/api/Units
+
+### Получить единицу измерения по ID
+GET {{baseUrl}}/api/Units/1
+
+### Создать единицу измерения
+POST {{baseUrl}}/api/Units
+Content-Type: application/json
+
+{
+  "name": "шт."
+}
+
+### Обновить единицу измерения
+PUT {{baseUrl}}/api/Units/1
+Content-Type: application/json
+
+{
+  "name": "штуки"
+}
+
+### Удалить единицу измерения
+DELETE {{baseUrl}}/api/Units/1
+
+
+### ===== ЦЕХА =====
+
+### Получить все цеха
+GET {{baseUrl}}/api/Guilds
+
+### Получить цех по ID
+GET {{baseUrl}}/api/Guilds/1
+
+### Создать цех
+POST {{baseUrl}}/api/Guilds
+Content-Type: application/json
+
+{
+  "name": "Сборочный цех №1"
+}
+
+### Обновить цех
+PUT {{baseUrl}}/api/Guilds/1
+Content-Type: application/json
+
+{
+  "name": "Сборочный цех №2"
+}
+
+### Удалить цех
+DELETE {{baseUrl}}/api/Guilds/1
+
+
+### ===== ТИПЫ ОПЕРАЦИЙ =====
+
+### Получить все типы операций
+GET {{baseUrl}}/api/OperationTypes
+
+### Создать тип операции
+POST {{baseUrl}}/api/OperationTypes
+Content-Type: application/json
+
+{
+  "name": "Сборка"
+}
+
+### Обновить тип операции
+PUT {{baseUrl}}/api/OperationTypes/1
+Content-Type: application/json
+
+{
+  "name": "Сварка"
+}
+
+
+### ===== ИСПОЛНИТЕЛИ =====
+
+### Получить всех исполнителей
+GET {{baseUrl}}/api/Performers
+
+### Создать исполнителя
+POST {{baseUrl}}/api/Performers
+Content-Type: application/json
+
+{
+  "fullName": "Иванов Иван Иванович",
+  "role": "Слесарь"
+}
+
+### Обновить исполнителя
+PUT {{baseUrl}}/api/Performers/1
+Content-Type: application/json
+
+{
+  "fullName": "Петров Петр Петрович",
+  "role": "Сварщик"
+}
+
+
+### ===== ИЗДЕЛИЯ (только чтение) =====
+
+### Получить все изделия
+GET {{baseUrl}}/api/ProductItems
+
+### Получить изделие по ID
+GET {{baseUrl}}/api/ProductItems/1
+
+
+### ===== ПОЗИЦИИ ПЛАНА ПРОИЗВОДСТВА =====
+
+### Получить все позиции плана
+GET {{baseUrl}}/api/PlanPositions
+
+### Получить позицию плана по ID
+GET {{baseUrl}}/api/PlanPositions/1
+
+### Создать позицию плана
+POST {{baseUrl}}/api/PlanPositions
+Content-Type: application/json
+
+{
+  "positionCode": "PP-2024-001",
+  "name": "План на январь - Деталь А",
+  "productItemId": 1,
+  "quantityPlanned": 100
+}
+
+### Обновить позицию плана
+PUT {{baseUrl}}/api/PlanPositions/1
+Content-Type: application/json
+
+{
+  "positionCode": "PP-2024-001",
+  "name": "План на январь - Деталь А (обновлено)",
+  "productItemId": 1,
+  "quantityPlanned": 150
+}
+
+
+### ===== МАРШРУТНЫЕ ЛИСТЫ =====
+
+### Получить все маршрутные листы
+GET {{baseUrl}}/api/RoutingSheets
+
+### Получить МЛ с фильтром по позиции плана
+GET {{baseUrl}}/api/RoutingSheets?planPositionId=1
+
+### Получить МЛ с фильтром по изделию
+GET {{baseUrl}}/api/RoutingSheets?productItemId=1
+
+### Получить маршрутный лист по ID (с операциями)
+GET {{baseUrl}}/api/RoutingSheets/1
+
+### Создать маршрутный лист вручную
+POST {{baseUrl}}/api/RoutingSheets
+Content-Type: application/json
+
+{
+  "number": "МЛ-001",
+  "name": "Маршрутный лист для детали А",
+  "planPositionId": 1,
+  "productItemId": 1,
+  "unitId": 1,
+  "quantity": 50
+}
+
+### Обновить маршрутный лист
+PUT {{baseUrl}}/api/RoutingSheets/1
+Content-Type: application/json
+
+{
+  "number": "МЛ-001-UPD",
+  "name": "Маршрутный лист (обновлен)",
+  "planPositionId": 1,
+  "productItemId": 1,
+  "unitId": 1,
+  "quantity": 75
+}
+
+### Изменить статус МЛ (1=Черновик, 2=Активен, 3=Завершен, 4=Отменен)
+PATCH {{baseUrl}}/api/RoutingSheets/1/status
+Content-Type: application/json
+
+{
+  "statusId": 2
+}
+
+### Разбить маршрутный лист
+POST {{baseUrl}}/api/RoutingSheets/1/split
+Content-Type: application/json
+
+{
+  "operationIds": [1, 2],
+  "newNumber": "МЛ-001-SPLIT",
+  "newName": "Новый МЛ после разбиения",
+  "newQuantity": 25
+}
+
+### Удалить маршрутный лист
+DELETE {{baseUrl}}/api/RoutingSheets/1
+
+
+### ===== ОПЕРАЦИИ =====
+
+### Получить все операции
+GET {{baseUrl}}/api/Operations
+
+### Получить операции по маршрутному листу
+GET {{baseUrl}}/api/Operations?routingSheetId=1
+
+### Получить операции по маршрутному листу (альтернативный путь)
+GET {{baseUrl}}/api/Operations/by-routing-sheet/1
+
+### Получить операции по цеху
+GET {{baseUrl}}/api/Operations?guildId=1
+
+### Получить операции по цеху (альтернативный путь)
+GET {{baseUrl}}/api/Operations/by-guild/1
+
+### Получить операцию по ID
+GET {{baseUrl}}/api/Operations/1
+
+### Создать операцию в МЛ
+POST {{baseUrl}}/api/Operations
+Content-Type: application/json
+
+{
+  "routingSheetId": 1,
+  "seqNumber": 1,
+  "code": "OP-001",
+  "name": "Заготовка",
+  "statusId": 1,
+  "guildId": 1,
+  "operationTypeId": 1,
+  "performerId": null,
+  "price": 100.50,
+  "sum": 5025.00,
+  "quantity": 50
+}
+
+### Обновить операцию
+PUT {{baseUrl}}/api/Operations/1
+Content-Type: application/json
+
+{
+  "seqNumber": 1,
+  "code": "OP-001-UPD",
+  "name": "Заготовка (обновлено)",
+  "statusId": 2,
+  "guildId": 1,
+  "operationTypeId": 1,
+  "price": 150.00,
+  "sum": 7500.00,
+  "quantity": 50
+}
+
+### Назначить исполнителя на операцию
+PATCH {{baseUrl}}/api/Operations/1/assign-performer
+Content-Type: application/json
+
+{
+  "performerId": 1
+}
+
+### Снять исполнителя с операции
+DELETE {{baseUrl}}/api/Operations/1/performer
+
+### Изменить статус операции
+PATCH {{baseUrl}}/api/Operations/1/status
+Content-Type: application/json
+
+{
+  "statusId": 3
+}
+
+### Удалить операцию
+DELETE {{baseUrl}}/api/Operations/1
