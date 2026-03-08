@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PlanPosition> PlanPositions { get; set; }
     public DbSet<RoutingSheet> RoutingSheets { get; set; }
     public DbSet<Operation> Operations { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -279,6 +280,11 @@ public class ApplicationDbContext : DbContext
                 Quantity = 5
             }
         );
+
+        // User configuration
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
 
         // Indexes
         modelBuilder.Entity<RoutingSheet>()
