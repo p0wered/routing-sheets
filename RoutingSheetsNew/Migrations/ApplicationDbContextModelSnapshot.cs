@@ -357,10 +357,25 @@ namespace RoutingSheetsNew.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("DocumentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("document_date");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("document_number");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("PlanningPeriod")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("planning_period");
 
                     b.Property<string>("PositionCode")
                         .IsRequired()
@@ -388,7 +403,10 @@ namespace RoutingSheetsNew.Migrations
                         new
                         {
                             Id = 1,
+                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2024-001",
                             Name = "Производство корпусов Q1",
+                            PlanningPeriod = "1 квартал 2024",
                             PositionCode = "ПП-2024-001",
                             ProductItemId = 1,
                             QuantityPlanned = 25
@@ -396,7 +414,10 @@ namespace RoutingSheetsNew.Migrations
                         new
                         {
                             Id = 2,
+                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2024-002",
                             Name = "Производство валов Q1",
+                            PlanningPeriod = "1 квартал 2024",
                             PositionCode = "ПП-2024-002",
                             ProductItemId = 2,
                             QuantityPlanned = 15
@@ -404,7 +425,10 @@ namespace RoutingSheetsNew.Migrations
                         new
                         {
                             Id = 3,
+                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2024-003",
                             Name = "Производство шестерен Q1",
+                            PlanningPeriod = "1 квартал 2024",
                             PositionCode = "ПП-2024-003",
                             ProductItemId = 3,
                             QuantityPlanned = 50

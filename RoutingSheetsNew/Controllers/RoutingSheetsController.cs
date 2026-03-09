@@ -94,7 +94,15 @@ public class RoutingSheetsController : ControllerBase
             sheet.CreatedAt,
             sheet.UpdatedAt,
             sheet.PlanPosition != null
-                ? new PlanPositionListDto(sheet.PlanPosition.Id, sheet.PlanPosition.PositionCode, sheet.PlanPosition.Name, sheet.PlanPosition.ProductItemId, sheet.PlanPosition.QuantityPlanned)
+                ? new PlanPositionListDto(
+                    sheet.PlanPosition.Id,
+                    sheet.PlanPosition.DocumentNumber,
+                    sheet.PlanPosition.DocumentDate,
+                    sheet.PlanPosition.PlanningPeriod,
+                    sheet.PlanPosition.PositionCode,
+                    sheet.PlanPosition.Name,
+                    sheet.PlanPosition.ProductItemId,
+                    sheet.PlanPosition.QuantityPlanned)
                 : null,
             sheet.ProductItem != null
                 ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description, sheet.ProductItem.QuantityPlanned)

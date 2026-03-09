@@ -38,15 +38,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 text-white text-2xl font-bold mb-4">
-              МЛ
-            </div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Маршрутные листы
+              Авторизация
             </h1>
-            <p className="text-gray-500 mt-1">
-              Войдите в систему управления
-            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -59,8 +53,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
+                className="block text-sm font-medium text-gray-700 mb-1.5">
                 Логин
               </label>
               <input
@@ -70,8 +63,8 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition placeholder-gray-400"
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                transition placeholder-gray-400"
                 placeholder="Введите логин"
               />
             </div>
@@ -79,8 +72,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1.5"
-              >
+                className="block text-sm font-medium text-gray-700 mb-1.5">
                 Пароль
               </label>
               <input
@@ -89,9 +81,9 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-900
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition placeholder-gray-400"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                transition placeholder-gray-400"
                 placeholder="Введите пароль"
               />
             </div>
@@ -99,9 +91,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 bg-blue-600 text-white font-medium rounded-lg
-                         hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                         disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
+              className="w-full py-3 px-4 bg-blue-600 text-white text-lg font-semibold rounded-xl
+              hover:bg-blue-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed
+              transition cursor-pointer"
             >
               {isSubmitting ? 'Вход...' : 'Войти'}
             </button>

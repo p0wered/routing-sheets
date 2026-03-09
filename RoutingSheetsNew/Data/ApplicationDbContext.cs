@@ -152,9 +152,9 @@ public class ApplicationDbContext : DbContext
 
         // Seed test data for PlanPositions
         modelBuilder.Entity<PlanPosition>().HasData(
-            new PlanPosition { Id = 1, PositionCode = "ПП-2024-001", Name = "Производство корпусов Q1", ProductItemId = 1, QuantityPlanned = 25 },
-            new PlanPosition { Id = 2, PositionCode = "ПП-2024-002", Name = "Производство валов Q1", ProductItemId = 2, QuantityPlanned = 15 },
-            new PlanPosition { Id = 3, PositionCode = "ПП-2024-003", Name = "Производство шестерен Q1", ProductItemId = 3, QuantityPlanned = 50 }
+            new PlanPosition { Id = 1, DocumentNumber = "ПП-2024-001", DocumentDate = new DateTime(2024, 1, 10), PlanningPeriod = "1 квартал 2024", PositionCode = "ПП-2024-001", Name = "Производство корпусов Q1", ProductItemId = 1, QuantityPlanned = 25 },
+            new PlanPosition { Id = 2, DocumentNumber = "ПП-2024-002", DocumentDate = new DateTime(2024, 1, 10), PlanningPeriod = "1 квартал 2024", PositionCode = "ПП-2024-002", Name = "Производство валов Q1", ProductItemId = 2, QuantityPlanned = 15 },
+            new PlanPosition { Id = 3, DocumentNumber = "ПП-2024-003", DocumentDate = new DateTime(2024, 1, 10), PlanningPeriod = "1 квартал 2024", PositionCode = "ПП-2024-003", Name = "Производство шестерен Q1", ProductItemId = 3, QuantityPlanned = 50 }
         );
 
         // Seed test data for RoutingSheets

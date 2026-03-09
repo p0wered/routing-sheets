@@ -24,11 +24,16 @@ public class PlanPositionsController : ControllerBase
     public async Task<ActionResult<IEnumerable<PlanPositionListDto>>> GetAll()
     {
         var positions = await _context.PlanPositions
+            .OrderByDescending(p => p.DocumentDate)
+            .ThenByDescending(p => p.Id)
             .Select(p => new PlanPositionListDto(
-                p.Id, 
-                p.PositionCode, 
-                p.Name, 
-                p.ProductItemId, 
+                p.Id,
+                p.DocumentNumber,
+                p.DocumentDate,
+                p.PlanningPeriod,
+                p.PositionCode,
+                p.Name,
+                p.ProductItemId,
                 p.QuantityPlanned))
             .ToListAsync();
 
@@ -46,6 +51,9 @@ public class PlanPositionsController : ControllerBase
             .Where(p => p.Id == id)
             .Select(p => new PlanPositionDto(
                 p.Id,
+                p.DocumentNumber,
+                p.DocumentDate,
+                p.PlanningPeriod,
                 p.PositionCode,
                 p.Name,
                 p.ProductItemId,
@@ -67,6 +75,19 @@ public class PlanPositionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<PlanPositionListDto>> Create([FromBody] CreatePlanPositionDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.DocumentNumber))
+        {
+            return BadRequest("Номер документа обязателен");
+        }
+
+        // simple uniqueness check for document number
+        var documentExists = await _context.PlanPositions
+            .AnyAsync(p => p.DocumentNumber == dto.DocumentNumber);
+        if (documentExists)
+        {
+            return BadRequest("План производства с таким номером документа уже существует");
+        }
+
         // Verify ProductItem exists
         var productItemExists = await _context.ProductItems.AnyAsync(p => p.Id == dto.ProductItemId);
         if (!productItemExists)
@@ -74,6 +95,9 @@ public class PlanPositionsController : ControllerBase
 
         var position = new PlanPosition
         {
+            DocumentNumber = dto.DocumentNumber.Trim(),
+            DocumentDate = dto.DocumentDate.Date,
+            PlanningPeriod = string.IsNullOrWhiteSpace(dto.PlanningPeriod) ? null : dto.PlanningPeriod.Trim(),
             PositionCode = dto.PositionCode,
             Name = dto.Name,
             ProductItemId = dto.ProductItemId,
@@ -83,8 +107,18 @@ public class PlanPositionsController : ControllerBase
         _context.PlanPositions.Add(position);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = position.Id },
-            new PlanPositionListDto(position.Id, position.PositionCode, position.Name, position.ProductItemId, position.QuantityPlanned));
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = position.Id },
+            new PlanPositionListDto(
+                position.Id,
+                position.DocumentNumber,
+                position.DocumentDate,
+                position.PlanningPeriod,
+                position.PositionCode,
+                position.Name,
+                position.ProductItemId,
+                position.QuantityPlanned));
     }
 
     /// <summary>
@@ -97,11 +131,26 @@ public class PlanPositionsController : ControllerBase
         if (position == null)
             return NotFound();
 
+        if (string.IsNullOrWhiteSpace(dto.DocumentNumber))
+        {
+            return BadRequest("Номер документа обязателен");
+        }
+
+        var documentExists = await _context.PlanPositions
+            .AnyAsync(p => p.Id != id && p.DocumentNumber == dto.DocumentNumber);
+        if (documentExists)
+        {
+            return BadRequest("План производства с таким номером документа уже существует");
+        }
+
         // Verify ProductItem exists
         var productItemExists = await _context.ProductItems.AnyAsync(p => p.Id == dto.ProductItemId);
         if (!productItemExists)
             return BadRequest("Указанное изделие не найдено");
 
+        position.DocumentNumber = dto.DocumentNumber.Trim();
+        position.DocumentDate = dto.DocumentDate.Date;
+        position.PlanningPeriod = string.IsNullOrWhiteSpace(dto.PlanningPeriod) ? null : dto.PlanningPeriod.Trim();
         position.PositionCode = dto.PositionCode;
         position.Name = dto.Name;
         position.ProductItemId = dto.ProductItemId;

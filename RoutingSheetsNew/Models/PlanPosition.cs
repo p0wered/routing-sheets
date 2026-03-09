@@ -12,6 +12,27 @@ public class PlanPosition
     [Key]
     public int Id { get; set; }
 
+    /// <summary>
+    /// Номер документа плана производства (вводится вручную)
+    /// </summary>
+    [Required]
+    [MaxLength(100)]
+    [Column("document_number")]
+    public string DocumentNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Дата документа плана производства (без времени, локальная дата)
+    /// </summary>
+    [Column("document_date", TypeName = "date")]
+    public DateTime DocumentDate { get; set; }
+
+    /// <summary>
+    /// Период планирования (произвольный текст, например "Март 2026")
+    /// </summary>
+    [MaxLength(200)]
+    [Column("planning_period")]
+    public string? PlanningPeriod { get; set; }
+
     [Required]
     [MaxLength(100)]
     [Column("position_code")]
