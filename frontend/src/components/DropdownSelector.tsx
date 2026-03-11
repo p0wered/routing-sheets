@@ -72,7 +72,7 @@ export function Select<TValue = string>({
     <div ref={containerRef} className={`relative min-w-[260px] ${className}`}>
       <button
         type="button"
-        className={`w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white
+        className={`w-full h-full min-h-[2.75rem] px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white
         flex items-center justify-between gap-2 text-left focus:border-primary disabled:opacity-50
         transition-all disabled:cursor-not-allowed`}
         onClick={handleToggle}

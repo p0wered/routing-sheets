@@ -258,7 +258,6 @@ export default function UsersPage() {
                 className="w-full"
                 onClick={() => setDeletingId(null)}
                 disabled={deleteMutation.isPending}
-                icon={<X />}
               >
                 Отмена
               </Button>

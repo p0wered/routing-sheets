@@ -126,7 +126,6 @@ export function CreatePlanModal({
           className="w-full"
           onClick={onClose}
           disabled={isSubmitting}
-          icon={<X />}
         >
           Отмена
         </Button>

@@ -25,7 +25,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const sizeClasses =
-    size === 'small' ? 'py-3 px-6 text-sm' : 'py-3 px-8 text-lg';
+    size === 'small' ? 'py-3 px-4 text-sm' : 'py-3 px-8 text-lg';
 
   const colorBaseClasses =
     color === 'error'

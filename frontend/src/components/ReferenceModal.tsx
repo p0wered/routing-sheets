@@ -109,7 +109,6 @@ export function ReferenceModal({
           className="w-full"
           onClick={onClose}
           disabled={isSubmitting}
-          icon={<X />}
         >
           Отмена
         </Button>

@@ -103,7 +103,6 @@ export default function LoginPage() {
               size="default"
               color="primary"
               className="w-full mt-2 cursor-pointer"
-              icon={<LogIn />}
             >
               {isSubmitting ? 'Вход...' : 'Войти'}
             </Button>
