@@ -1,1 +1,49 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Sans:ital,wght@0,100..800;1,100..800&display=swap');
+
+@theme {
+    --font-sans: 'Ubuntu Sans', ui-sans-serif, system-ui, sans-serif;
+    --color-primary: #1483ff;
+    --color-primary-light: #459dff;
+    --color-secondary: #f1f5f9;
+    --color-secondary-dark: #e2e8f0;
+    --color-error: #f4493d;
+    --color-black: #272729;
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 10px rgba(0,0,0,0.08);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-xs: 0 2px 6px rgba(0,0,0,0.08);
+    --shadow-xs-heavy: 0 2px 6px rgba(0,0,0,0.16);
+    --breakpoint-xs: 480px;
+    --breakpoint-2xs: 360px;
+}
+
+::selection {
+    background: var(--color-primary);
+    color: white;
+}
+
+::-moz-selection {
+    background: var(--color-primary);
+    color: white;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    scroll-behavior: smooth;
+    font-family: 'Ubuntu Sans', sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--color-secondary);
+    color: var(--color-black);
+    font-size: 18px;
+    font-family: 'Ubuntu Sans', sans-serif;
+}

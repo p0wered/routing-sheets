@@ -6,15 +6,7 @@ export default function ProtectedRoute({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-400 text-lg">Загрузка...</div>
-      </div>
-    );
-  }
+  const { user } = useAuth();
 
   if (!user) {
     return <Navigate to="/login" replace />;
