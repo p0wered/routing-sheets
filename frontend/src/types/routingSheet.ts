@@ -10,6 +10,7 @@ export interface RoutingSheetListItem {
   statusName: string | null;
   planPositionName: string | null;
   productItemName: string | null;
+  unitName: string | null;
 }
 
 export interface RoutingSheetDetail {
@@ -23,6 +24,7 @@ export interface RoutingSheetDetail {
   quantity: number;
   createdAt: string;
   updatedAt: string | null;
+  operations?: OperationDto[];
 }
 
 export interface CreateRoutingSheetRequest {
@@ -49,9 +51,95 @@ export interface RoutingSheetStatus {
   name: string;
 }
 
+export interface OperationStatus {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface OperationDto {
+  id: number;
+  routingSheetId: number;
+  seqNumber: number;
+  code: string | null;
+  name: string;
+  statusId: number | null;
+  guildId: number | null;
+  operationTypeId: number | null;
+  performerId: number | null;
+  price: number | null;
+  sum: number | null;
+  quantity: number;
+  status: OperationStatus | null;
+  guild: { id: number; name: string } | null;
+  operationType: { id: number; name: string } | null;
+  performer: { id: number; fullName: string; role: string | null } | null;
+}
+
+export interface OperationListItem {
+  id: number;
+  routingSheetId: number;
+  seqNumber: number;
+  code: string | null;
+  name: string;
+  statusId: number | null;
+  guildId: number | null;
+  operationTypeId: number | null;
+  performerId: number | null;
+  price: number | null;
+  sum: number | null;
+  quantity: number;
+  statusName: string | null;
+  guildName: string | null;
+  operationTypeName: string | null;
+  performerName: string | null;
+  routingSheetNumber: string | null;
+}
+
+export interface CreateOperationRequest {
+  routingSheetId: number;
+  seqNumber: number;
+  code: string | null;
+  name: string;
+  statusId: number | null;
+  guildId: number | null;
+  operationTypeId: number | null;
+  performerId: number | null;
+  price: number | null;
+  sum: number | null;
+  quantity: number;
+}
+
+export interface UpdateOperationRequest {
+  seqNumber: number;
+  code: string | null;
+  name: string;
+  statusId: number | null;
+  guildId: number | null;
+  operationTypeId: number | null;
+  performerId: number | null;
+  price: number | null;
+  sum: number | null;
+  quantity: number;
+}
+
+export interface SplitRoutingSheetRequest {
+  operationIds: number[];
+  newNumber: string;
+  newName: string;
+  newQuantity: number;
+}
+
 export const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: 'bg-gray-100', text: 'text-gray-600' },
-  ACTIVE: { bg: 'bg-blue-50', text: 'text-blue-700' },
-  COMPLETED: { bg: 'bg-green-50', text: 'text-green-700' },
-  CANCELLED: { bg: 'bg-red-50', text: 'text-red-600' },
+  ACTIVE: { bg: 'bg-primary/12', text: 'text-primary' },
+  COMPLETED: { bg: 'bg-success/12', text: 'text-success' },
+  CANCELLED: { bg: 'bg-error/12', text: 'text-error' },
+};
+
+export const OP_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  PENDING: { bg: 'bg-gray-100', text: 'text-gray-600' },
+  IN_PROGRESS: { bg: 'bg-primary/12', text: 'text-primary' },
+  COMPLETED: { bg: 'bg-success/12', text: 'text-success' },
+  CANCELLED: { bg: 'bg-error/12', text: 'text-error' },
 };

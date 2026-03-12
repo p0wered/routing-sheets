@@ -28,7 +28,8 @@ public record RoutingSheetListDto(
     DateTime CreatedAt,
     string? StatusName,
     string? PlanPositionName,
-    string? ProductItemName);
+    string? ProductItemName,
+    string? UnitName);
 
 public record CreateRoutingSheetDto(
     string Number,

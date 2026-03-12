@@ -31,6 +31,7 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.Status)
             .Include(rs => rs.PlanPosition)
             .Include(rs => rs.ProductItem)
+            .Include(rs => rs.Unit)
             .AsQueryable();
 
         if (planPositionId.HasValue)
@@ -51,7 +52,8 @@ public class RoutingSheetsController : ControllerBase
                 rs.CreatedAt,
                 rs.Status != null ? rs.Status.Name : null,
                 rs.PlanPosition != null ? rs.PlanPosition.Name : null,
-                rs.ProductItem != null ? rs.ProductItem.Name : null))
+                rs.ProductItem != null ? rs.ProductItem.Name : null,
+                rs.Unit != null ? rs.Unit.Name : null))
             .ToListAsync();
 
         return Ok(sheets);
@@ -184,8 +186,12 @@ public class RoutingSheetsController : ControllerBase
         _context.RoutingSheets.Add(sheet);
         await _context.SaveChangesAsync();
 
+        var unitName = dto.UnitId.HasValue
+            ? (await _context.Units.FindAsync(dto.UnitId.Value))?.Name
+            : null;
+
         return CreatedAtAction(nameof(GetById), new { id = sheet.Id },
-            new RoutingSheetListDto(sheet.Id, sheet.Number, sheet.Name, sheet.PlanPositionId, sheet.ProductItemId, sheet.StatusId, sheet.Quantity, sheet.CreatedAt, "Черновик", null, null));
+            new RoutingSheetListDto(sheet.Id, sheet.Number, sheet.Name, sheet.PlanPositionId, sheet.ProductItemId, sheet.StatusId, sheet.Quantity, sheet.CreatedAt, "Черновик", null, null, unitName));
     }
 
     /// <summary>
@@ -343,7 +349,7 @@ public class RoutingSheetsController : ControllerBase
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = newSheet.Id },
-            new RoutingSheetListDto(newSheet.Id, newSheet.Number, newSheet.Name, newSheet.PlanPositionId, newSheet.ProductItemId, newSheet.StatusId, newSheet.Quantity, newSheet.CreatedAt, "Черновик", null, null));
+            new RoutingSheetListDto(newSheet.Id, newSheet.Number, newSheet.Name, newSheet.PlanPositionId, newSheet.ProductItemId, newSheet.StatusId, newSheet.Quantity, newSheet.CreatedAt, "Черновик", null, null, null));
     }
 }
 

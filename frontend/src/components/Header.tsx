@@ -33,8 +33,8 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-lg/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-18">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center text-sm font-bold">
               МЛ
@@ -46,15 +46,15 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
 
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-base font-medium text-gray-900">
                 {user.fullName}
               </p>
-              <p className="text-xs text-gray-500">{roleLabel}</p>
+              <p className="text-sm text-gray-500">{roleLabel}</p>
             </div>
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                className={`inline-flex items-center justify-center w-9 h-9 rounded-lg transition cursor-pointer
+                className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition cursor-pointer
                 ${
                   isMenuOpen
                     ? 'bg-primary text-white border-primary'
@@ -67,8 +67,24 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
 
               {isMenuOpen && (
                 <DropdownList
-                  className="right-0 w-44"
+                  className="right-0 w-52"
                   items={[
+                    {
+                      key: 'home',
+                      label: 'Маршрутные листы',
+                      onClick: () => {
+                        setIsMenuOpen(false);
+                        navigate('/');
+                      },
+                    },
+                    {
+                      key: 'operations',
+                      label: 'Операции по цехам',
+                      onClick: () => {
+                        setIsMenuOpen(false);
+                        navigate('/operations');
+                      },
+                    },
                     ...(user.role === 'WorkshopChief' || user.role === 'PlanningDept'
                       ? [
                           {

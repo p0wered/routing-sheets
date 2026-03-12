@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { Spinner } from './components/Spinner';
 import LoginPage from './pages/LoginPage';
 import RoutingSheetsPage from './pages/RoutingSheetsPage';
+import OperationsByGuildPage from './pages/OperationsByGuildPage';
 import UsersPage from './pages/UsersPage';
 import ReferencesPage from './pages/ReferencesPage';
 
@@ -32,6 +33,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RoutingSheetsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/operations"
+        element={
+          <ProtectedRoute>
+            <OperationsByGuildPage />
           </ProtectedRoute>
         }
       />

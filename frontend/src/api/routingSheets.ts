@@ -6,6 +6,7 @@ import type {
   UpdateRoutingSheetRequest,
   ProductItem,
   RoutingSheetStatus,
+  SplitRoutingSheetRequest,
 } from '../types/routingSheet';
 
 export async function getRoutingSheets(params?: {
@@ -36,6 +37,11 @@ export async function deleteRoutingSheet(id: number) {
 
 export async function changeRoutingSheetStatus(id: number, statusId: number) {
   await apiClient.patch(`/RoutingSheets/${id}/status`, { statusId });
+}
+
+export async function splitRoutingSheet(id: number, data: SplitRoutingSheetRequest) {
+  const res = await apiClient.post<RoutingSheetListItem>(`/RoutingSheets/${id}/split`, data);
+  return res.data;
 }
 
 export async function getProductItems() {

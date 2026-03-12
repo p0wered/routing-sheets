@@ -160,7 +160,6 @@ export function UserModal({
           className="w-full"
           onClick={onClose}
           disabled={isSubmitting}
-          icon={<X />}
         >
           Отмена
         </Button>

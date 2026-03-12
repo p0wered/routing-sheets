@@ -283,12 +283,20 @@ public class OperationsController : ControllerBase
                 return BadRequest("Указанный тип операции не найден");
         }
 
+        if (dto.PerformerId.HasValue)
+        {
+            var performerExists = await _context.Performers.AnyAsync(p => p.Id == dto.PerformerId.Value);
+            if (!performerExists)
+                return BadRequest("Указанный исполнитель не найден");
+        }
+
         operation.SeqNumber = dto.SeqNumber;
         operation.Code = dto.Code;
         operation.Name = dto.Name;
         operation.StatusId = dto.StatusId;
         operation.GuildId = dto.GuildId;
         operation.OperationTypeId = dto.OperationTypeId;
+        operation.PerformerId = dto.PerformerId;
         operation.Price = dto.Price;
         operation.Sum = dto.Sum;
         operation.Quantity = dto.Quantity;

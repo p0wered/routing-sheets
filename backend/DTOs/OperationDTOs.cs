@@ -57,6 +57,7 @@ public record UpdateOperationDto(
     int? StatusId,
     int? GuildId,
     int? OperationTypeId,
+    int? PerformerId,
     decimal? Price,
     decimal? Sum,
     int Quantity);
