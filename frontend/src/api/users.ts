@@ -4,13 +4,17 @@ import type { User } from '../types/auth';
 export interface CreateUserRequest {
   username: string;
   password: string;
+  fullName: string;
   role: string;
+  guildId?: number | null;
 }
 
 export interface UpdateUserRequest {
   username: string;
+  fullName: string;
   password?: string;
   role: string;
+  guildId?: number | null;
 }
 
 export async function getUsers(): Promise<User[]> {

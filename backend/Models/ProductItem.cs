@@ -19,11 +19,9 @@ public class ProductItem
     [MaxLength(1000)]
     public string? Description { get; set; }
 
-    [Column("quantity_planned")]
-    public int QuantityPlanned { get; set; }
-
     // Navigation properties
     public virtual ICollection<PlanPosition> PlanPositions { get; set; } = new List<PlanPosition>();
     public virtual ICollection<RoutingSheet> RoutingSheets { get; set; } = new List<RoutingSheet>();
+    public virtual ICollection<ProductPart> ProductParts { get; set; } = new List<ProductPart>();
 }
 

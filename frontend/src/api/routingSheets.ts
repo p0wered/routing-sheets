@@ -2,16 +2,16 @@ import apiClient from './client';
 import type {
   RoutingSheetListItem,
   RoutingSheetDetail,
-  CreateRoutingSheetRequest,
-  UpdateRoutingSheetRequest,
-  ProductItem,
   RoutingSheetStatus,
-  SplitRoutingSheetRequest,
+  ProductItem,
+  SplitQuantityRequest,
+  SplitResult,
 } from '../types/routingSheet';
 
 export async function getRoutingSheets(params?: {
   planPositionId?: number;
   productItemId?: number;
+  guildId?: number;
 }) {
   const res = await apiClient.get<RoutingSheetListItem[]>('/RoutingSheets', { params });
   return res.data;
@@ -22,25 +22,19 @@ export async function getRoutingSheetById(id: number) {
   return res.data;
 }
 
-export async function createRoutingSheet(data: CreateRoutingSheetRequest) {
-  const res = await apiClient.post<RoutingSheetListItem>('/RoutingSheets', data);
+export async function generateRoutingSheet(planPositionId: number) {
+  const res = await apiClient.post<RoutingSheetDetail>(
+    `/RoutingSheets/generate/${planPositionId}`,
+  );
   return res.data;
-}
-
-export async function updateRoutingSheet(id: number, data: UpdateRoutingSheetRequest) {
-  await apiClient.put(`/RoutingSheets/${id}`, data);
-}
-
-export async function deleteRoutingSheet(id: number) {
-  await apiClient.delete(`/RoutingSheets/${id}`);
 }
 
 export async function changeRoutingSheetStatus(id: number, statusId: number) {
   await apiClient.patch(`/RoutingSheets/${id}/status`, { statusId });
 }
 
-export async function splitRoutingSheet(id: number, data: SplitRoutingSheetRequest) {
-  const res = await apiClient.post<RoutingSheetListItem>(`/RoutingSheets/${id}/split`, data);
+export async function splitRoutingSheet(id: number, data: SplitQuantityRequest) {
+  const res = await apiClient.post<SplitResult>(`/RoutingSheets/${id}/split`, data);
   return res.data;
 }
 

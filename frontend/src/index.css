@@ -48,3 +48,14 @@ body {
     font-size: 18px;
     font-family: 'Ubuntu Sans', sans-serif;
 }
+
+/* Toast (Sonner) — стили под дизайн приложения */
+[data-sonner-toast] {
+    border-left-width: 4px !important;
+}
+[data-sonner-toast][data-type="success"] {
+    border-left-color: var(--color-success) !important;
+}
+[data-sonner-toast][data-type="error"] {
+    border-left-color: var(--color-error) !important;
+}

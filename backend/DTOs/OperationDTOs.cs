@@ -37,30 +37,8 @@ public record OperationListDto(
     string? PerformerName,
     string? RoutingSheetNumber);
 
-public record CreateOperationDto(
-    int RoutingSheetId,
-    int SeqNumber,
-    string? Code,
-    string Name,
-    int? StatusId,
-    int? GuildId,
-    int? OperationTypeId,
-    int? PerformerId,
-    decimal? Price,
-    decimal? Sum,
-    int Quantity);
-
-public record UpdateOperationDto(
-    int SeqNumber,
-    string? Code,
-    string Name,
-    int? StatusId,
-    int? GuildId,
-    int? OperationTypeId,
-    int? PerformerId,
-    decimal? Price,
-    decimal? Sum,
-    int Quantity);
 
 public record AssignPerformerDto(int PerformerId);
+
+public record SplitOperationDto(int SplitQuantity);
 

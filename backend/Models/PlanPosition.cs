@@ -26,12 +26,11 @@ public class PlanPosition
     [Column("document_date", TypeName = "date")]
     public DateTime DocumentDate { get; set; }
 
-    /// <summary>
-    /// Период планирования (произвольный текст, например "Март 2026")
-    /// </summary>
-    [MaxLength(200)]
-    [Column("planning_period")]
-    public string? PlanningPeriod { get; set; }
+    [Column("plan_month")]
+    public int PlanMonth { get; set; }
+
+    [Column("plan_year")]
+    public int PlanYear { get; set; }
 
     [Required]
     [MaxLength(100)]
@@ -48,9 +47,21 @@ public class PlanPosition
     [Column("quantity_planned")]
     public int QuantityPlanned { get; set; }
 
+    [Column("guild_id")]
+    public int GuildId { get; set; }
+
+    [Column("status_id")]
+    public int StatusId { get; set; } = 1;
+
     // Navigation properties
     [ForeignKey(nameof(ProductItemId))]
     public virtual ProductItem? ProductItem { get; set; }
+
+    [ForeignKey(nameof(GuildId))]
+    public virtual Guild? Guild { get; set; }
+
+    [ForeignKey(nameof(StatusId))]
+    public virtual PlanStatus? Status { get; set; }
 
     public virtual ICollection<RoutingSheet> RoutingSheets { get; set; } = new List<RoutingSheet>();
 }

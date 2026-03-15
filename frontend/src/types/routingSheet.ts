@@ -27,22 +27,10 @@ export interface RoutingSheetDetail {
   operations?: OperationDto[];
 }
 
-export interface CreateRoutingSheetRequest {
-  number: string;
-  name: string;
-  planPositionId: number | null;
-  productItemId: number | null;
-  unitId: number | null;
-  quantity: number;
-}
-
-export type UpdateRoutingSheetRequest = CreateRoutingSheetRequest;
-
 export interface ProductItem {
   id: number;
   name: string;
   description: string | null;
-  quantityPlanned: number;
 }
 
 export interface RoutingSheetStatus {
@@ -96,38 +84,17 @@ export interface OperationListItem {
   routingSheetNumber: string | null;
 }
 
-export interface CreateOperationRequest {
-  routingSheetId: number;
-  seqNumber: number;
-  code: string | null;
-  name: string;
-  statusId: number | null;
-  guildId: number | null;
-  operationTypeId: number | null;
-  performerId: number | null;
-  price: number | null;
-  sum: number | null;
-  quantity: number;
+export interface SplitQuantityRequest {
+  splitQuantity: number;
 }
 
-export interface UpdateOperationRequest {
-  seqNumber: number;
-  code: string | null;
-  name: string;
-  statusId: number | null;
-  guildId: number | null;
-  operationTypeId: number | null;
-  performerId: number | null;
-  price: number | null;
-  sum: number | null;
-  quantity: number;
+export interface SplitOperationRequest {
+  splitQuantity: number;
 }
 
-export interface SplitRoutingSheetRequest {
-  operationIds: number[];
-  newNumber: string;
-  newName: string;
-  newQuantity: number;
+export interface SplitResult {
+  originalId: number;
+  newId: number;
 }
 
 export const STATUS_COLORS: Record<string, { bg: string; text: string }> = {

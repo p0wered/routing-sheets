@@ -23,6 +23,13 @@ public class User
     [Required]
     [MaxLength(50)]
     public string Role { get; set; } = string.Empty;
+
+    [Column("guild_id")]
+    public int? GuildId { get; set; }
+
+    // Navigation properties
+    [ForeignKey(nameof(GuildId))]
+    public virtual Guild? Guild { get; set; }
 }
 
 public static class UserRoles

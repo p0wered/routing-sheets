@@ -18,5 +18,8 @@ public class Guild
 
     // Navigation properties
     public virtual ICollection<Operation> Operations { get; set; } = new List<Operation>();
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
+    public virtual ICollection<PlanPosition> PlanPositions { get; set; } = new List<PlanPosition>();
+    public virtual ICollection<PartOperation> PartOperations { get; set; } = new List<PartOperation>();
 }
 

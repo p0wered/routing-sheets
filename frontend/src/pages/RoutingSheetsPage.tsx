@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLE_LABELS } from '../types/auth';
-import type { CreatePlanFormState } from '../types/plan';
+import type { PlanPositionListItem } from '../types/plan';
 import type {
   RoutingSheetListItem,
   RoutingSheetStatus,
@@ -13,42 +13,30 @@ import { OP_STATUS_COLORS } from '../types/routingSheet';
 import { Button } from '../components/Button';
 import { RoutingHeader } from '../components/Header';
 import { Select } from '../components/DropdownSelector';
-import { CreatePlanModal } from '../components/CreatePlanModal';
-import { RoutingSheetModal } from '../components/RoutingSheetModal';
-import { OperationModal } from '../components/OperationModal';
-import { SplitRoutingSheetModal } from '../components/SplitRoutingSheetModal';
+import { MonthYearPicker } from '../components/MonthYearPicker';
+import { PlanStatusBadge } from '../components/PlanStatusBadge';
+import { SplitQuantityModal } from '../components/SplitQuantityModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
-import {
-  getPlanPositions,
-  createPlanPosition,
-  type PlanPositionListItem,
-} from '../api/planPositions';
+import { getPlanPositions, changePlanPositionStatus, getPlanStatuses } from '../api/planPositions';
 import {
   getRoutingSheets,
-  createRoutingSheet,
-  updateRoutingSheet,
-  deleteRoutingSheet,
+  generateRoutingSheet,
   changeRoutingSheetStatus,
   getRoutingSheetStatuses,
   splitRoutingSheet,
 } from '../api/routingSheets';
 import {
   getOperationsByRoutingSheet,
-  createOperation,
-  updateOperation,
-  deleteOperation,
   assignPerformer,
   changeOperationStatus,
   getOperationStatuses,
+  splitOperation,
 } from '../api/operations';
-import { performersApi } from '../api/references';
+import { guildsApi, performersApi } from '../api/references';
+import { toast, extractError } from '../utils/toast';
 import {
-  Plus,
-  FileText,
-  Pencil,
-  Trash2,
   Play,
   CircleCheck,
   Ban,
@@ -57,25 +45,42 @@ import {
   Scissors,
   UserPlus,
   Clock,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Zap,
+  Lock,
 } from 'lucide-react';
 
-function formatDateRu(dateIso: string) {
-  if (!dateIso) return '—';
-  const d = new Date(dateIso);
-  if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  if (yyyy < 1900) return '—';
-  return `${dd}.${mm}.${yyyy}`;
+type SortDirection = 'asc' | 'desc';
+
+type OpSortField =
+  | 'seqNumber'
+  | 'code'
+  | 'name'
+  | 'operationTypeName'
+  | 'guildName'
+  | 'performerName'
+  | 'quantity'
+  | 'price'
+  | 'sum'
+  | 'statusName';
+
+function compareFieldValues(a: unknown, b: unknown): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b), 'ru');
 }
 
-function extractError(error: unknown, fallback: string): string {
-  const axiosError = error as { response?: { data?: string | { message?: string } } };
-  if (typeof axiosError.response?.data === 'string') return axiosError.response.data;
-  if (typeof axiosError.response?.data === 'object' && axiosError.response.data?.message)
-    return axiosError.response.data.message;
-  return fallback;
+function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
+  if (!active) return <ArrowUpDown className="w-3 h-3 text-gray-400" />;
+  return direction === 'asc' ? (
+    <ArrowUp className="w-3 h-3 text-primary" />
+  ) : (
+    <ArrowDown className="w-3 h-3 text-primary" />
+  );
 }
 
 const STATUS_TRANSITIONS: Record<number, number[]> = {
@@ -130,32 +135,19 @@ export default function RoutingSheetsPage() {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
 
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<CreatePlanFormState>(() => {
-    const today = new Date();
-    const iso = today.toISOString().slice(0, 10);
-    return { documentNumber: '', documentDate: iso, planningPeriod: '' };
-  });
-  const [formError, setFormError] = useState<string | null>(null);
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedGuildId, setSelectedGuildId] = useState<number | null>(null);
 
-  const [isRsModalOpen, setIsRsModalOpen] = useState(false);
-  const [editingSheet, setEditingSheet] = useState<RoutingSheetListItem | null>(null);
-  const [rsModalError, setRsModalError] = useState<string | null>(null);
-
-  const [deletingSheet, setDeletingSheet] = useState<RoutingSheetListItem | null>(null);
-
-  const [statusChangeSheet, setStatusChangeSheet] = useState<RoutingSheetListItem | null>(null);
-  const [targetStatusId, setTargetStatusId] = useState<number | null>(null);
-
-  // Expanded rows for operations
+  // Expanded plan row → shows routing sheets
+  const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
+  // Expanded routing sheet row → shows operations
   const [expandedSheetId, setExpandedSheetId] = useState<number | null>(null);
 
-  // Operation CRUD
-  const [isOpModalOpen, setIsOpModalOpen] = useState(false);
-  const [editingOp, setEditingOp] = useState<OperationListItem | null>(null);
-  const [opModalError, setOpModalError] = useState<string | null>(null);
-  const [deletingOp, setDeletingOp] = useState<OperationListItem | null>(null);
+  // RS status change
+  const [statusChangeSheet, setStatusChangeSheet] = useState<RoutingSheetListItem | null>(null);
+  const [targetStatusId, setTargetStatusId] = useState<number | null>(null);
 
   // Operation status change
   const [opStatusChange, setOpStatusChange] = useState<{
@@ -167,21 +159,54 @@ export default function RoutingSheetsPage() {
   const [assigningPerformerOp, setAssigningPerformerOp] = useState<OperationListItem | null>(null);
   const [selectedPerformerId, setSelectedPerformerId] = useState<number | null>(null);
 
-  // Split
-  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  // Split RS
   const [splitSheet, setSplitSheet] = useState<RoutingSheetListItem | null>(null);
-  const [splitError, setSplitError] = useState<string | null>(null);
+  const [splitSheetError, setSplitSheetError] = useState<string | null>(null);
 
-  // Queries
-  const { data: plans, isLoading: isPlansLoading } = useQuery({
-    queryKey: ['planPositions'],
-    queryFn: getPlanPositions,
+  // Split operation
+  const [splitOp, setSplitOp] = useState<OperationListItem | null>(null);
+  const [splitOpError, setSplitOpError] = useState<string | null>(null);
+
+  // Generate confirmation
+  const [generatingPlan, setGeneratingPlan] = useState<PlanPositionListItem | null>(null);
+
+  // Close plan confirmation
+  const [closingPlan, setClosingPlan] = useState<PlanPositionListItem | null>(null);
+
+  // Operation sorting
+  const [opSortField, setOpSortField] = useState<OpSortField | null>(null);
+  const [opSortDir, setOpSortDir] = useState<SortDirection>('asc');
+
+  // ─── Derived guild filter ───
+  const isPlanningDept = user?.role === 'PlanningDept';
+  const effectiveGuildId = isPlanningDept ? selectedGuildId : user?.guildId ?? null;
+
+  // ─── Queries ───
+  const { data: guilds } = useQuery({
+    queryKey: ['guilds'],
+    queryFn: guildsApi.getAll,
+    enabled: isPlanningDept,
   });
 
-  const { data: routingSheets, isLoading: isSheetsLoading } = useQuery({
-    queryKey: ['routingSheets', selectedPlanId],
-    queryFn: () => getRoutingSheets(selectedPlanId ? { planPositionId: selectedPlanId } : undefined),
-    enabled: selectedPlanId !== null,
+  const { data: plans, isLoading: isPlansLoading } = useQuery({
+    queryKey: ['planPositions', selectedMonth, selectedYear, effectiveGuildId],
+    queryFn: () =>
+      getPlanPositions({
+        month: selectedMonth,
+        year: selectedYear,
+        ...(effectiveGuildId ? { guildId: effectiveGuildId } : {}),
+      }),
+  });
+
+  const { data: planStatuses } = useQuery({
+    queryKey: ['planStatuses'],
+    queryFn: getPlanStatuses,
+  });
+
+  const { data: routingSheetsForPlan, isLoading: isSheetsLoading } = useQuery({
+    queryKey: ['routingSheets', expandedPlanId],
+    queryFn: () => getRoutingSheets({ planPositionId: expandedPlanId! }),
+    enabled: expandedPlanId !== null,
   });
 
   const { data: statuses } = useQuery({
@@ -206,67 +231,51 @@ export default function RoutingSheetsPage() {
     enabled: assigningPerformerOp !== null,
   });
 
-  // Plan creation
-  const createPlanMutation = useMutation({
-    mutationFn: async () => {
-      setFormError(null);
-      const trimmedNumber = createForm.documentNumber.trim();
-      const payload = {
-        documentNumber: trimmedNumber,
-        documentDate: createForm.documentDate,
-        planningPeriod: createForm.planningPeriod.trim() || null,
-        positionCode: trimmedNumber,
-        name: createForm.planningPeriod.trim() || trimmedNumber,
-        productItemId: 1,
-        quantityPlanned: 0,
-      };
-      return await createPlanPosition(payload);
-    },
-    onSuccess: (created) => {
+  // Preload all routing sheets for the current month to know which plans have RS
+  const { data: allRoutingSheets } = useQuery({
+    queryKey: ['allRoutingSheets', selectedMonth, selectedYear, effectiveGuildId],
+    queryFn: () =>
+      getRoutingSheets(effectiveGuildId ? { guildId: effectiveGuildId } : undefined),
+  });
+
+  const rsByPlanId = useMemo(() => {
+    const map = new Map<number, RoutingSheetListItem[]>();
+    if (!allRoutingSheets) return map;
+    for (const rs of allRoutingSheets) {
+      if (rs.planPositionId == null) continue;
+      const list = map.get(rs.planPositionId) ?? [];
+      list.push(rs);
+      map.set(rs.planPositionId, list);
+    }
+    return map;
+  }, [allRoutingSheets]);
+
+  // ─── Mutations ───
+  const generateMutation = useMutation({
+    mutationFn: (planPositionId: number) => generateRoutingSheet(planPositionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['routingSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['allRoutingSheets'] });
       queryClient.invalidateQueries({ queryKey: ['planPositions'] });
-      setIsCreatePlanOpen(false);
-      setSelectedPlanId(created.id);
-      setCreateForm((prev) => ({ ...prev, documentNumber: '' }));
+      setGeneratingPlan(null);
+      toast.success('Маршрутный лист сформирован');
     },
-    onError: (error: unknown) => {
-      setFormError(extractError(error, 'Не удалось создать план производства'));
+    onError: (err: unknown) => {
+      setGeneratingPlan(null);
+      toast.error(extractError(err, 'Не удалось сформировать маршрутный лист'));
     },
   });
 
-  // Routing sheet CRUD mutations
-  const createRsMutation = useMutation({
-    mutationFn: createRoutingSheet,
+  const closePlanMutation = useMutation({
+    mutationFn: (id: number) => changePlanPositionStatus(id, 2),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routingSheets', selectedPlanId] });
-      closeRsModal();
+      queryClient.invalidateQueries({ queryKey: ['planPositions'] });
+      setClosingPlan(null);
+      toast.success('План закрыт');
     },
     onError: (err: unknown) => {
-      setRsModalError(extractError(err, 'Не удалось создать маршрутный лист'));
-    },
-  });
-
-  const updateRsMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof updateRoutingSheet>[1] }) =>
-      updateRoutingSheet(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routingSheets', selectedPlanId] });
-      closeRsModal();
-    },
-    onError: (err: unknown) => {
-      setRsModalError(extractError(err, 'Не удалось обновить маршрутный лист'));
-    },
-  });
-
-  const deleteRsMutation = useMutation({
-    mutationFn: deleteRoutingSheet,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routingSheets', selectedPlanId] });
-      setDeletingSheet(null);
-      if (expandedSheetId === deletingSheet?.id) setExpandedSheetId(null);
-    },
-    onError: (err: unknown) => {
-      setDeletingSheet(null);
-      alert(extractError(err, 'Не удалось удалить маршрутный лист'));
+      setClosingPlan(null);
+      toast.error(extractError(err, 'Не удалось закрыть план'));
     },
   });
 
@@ -274,69 +283,50 @@ export default function RoutingSheetsPage() {
     mutationFn: ({ id, statusId }: { id: number; statusId: number }) =>
       changeRoutingSheetStatus(id, statusId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routingSheets', selectedPlanId] });
+      queryClient.invalidateQueries({ queryKey: ['routingSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['allRoutingSheets'] });
       setStatusChangeSheet(null);
       setTargetStatusId(null);
+      toast.success('Статус МЛ изменён');
     },
     onError: (err: unknown) => {
       setStatusChangeSheet(null);
       setTargetStatusId(null);
-      alert(extractError(err, 'Не удалось изменить статус'));
+      toast.error(extractError(err, 'Не удалось изменить статус'));
     },
   });
 
-  // Split mutation
-  const splitMutation = useMutation({
-    mutationFn: (data: Parameters<typeof splitRoutingSheet>[1] & { sourceId: number }) =>
-      splitRoutingSheet(data.sourceId, data),
+  const splitRsMutation = useMutation({
+    mutationFn: ({ id, splitQuantity }: { id: number; splitQuantity: number }) =>
+      splitRoutingSheet(id, { splitQuantity }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['routingSheets', selectedPlanId] });
+      queryClient.invalidateQueries({ queryKey: ['routingSheets'] });
+      queryClient.invalidateQueries({ queryKey: ['allRoutingSheets'] });
       queryClient.invalidateQueries({ queryKey: ['operations'] });
-      closeSplitModal();
+      setSplitSheet(null);
+      setSplitSheetError(null);
+      toast.success('Маршрутный лист разбит');
     },
     onError: (err: unknown) => {
-      setSplitError(extractError(err, 'Не удалось разбить маршрутный лист'));
+      const msg = extractError(err, 'Не удалось разбить маршрутный лист');
+      setSplitSheetError(msg);
+      toast.error(msg);
     },
   });
 
-  // Operation CRUD mutations
-  const createOpMutation = useMutation({
-    mutationFn: createOperation,
+  const splitOpMutation = useMutation({
+    mutationFn: ({ id, splitQuantity }: { id: number; splitQuantity: number }) =>
+      splitOperation(id, { splitQuantity }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
-      closeOpModal();
+      setSplitOp(null);
+      setSplitOpError(null);
+      toast.success('Операция разбита');
     },
     onError: (err: unknown) => {
-      setOpModalError(extractError(err, 'Не удалось создать операцию'));
-    },
-  });
-
-  const updateOpMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: Parameters<typeof updateOperation>[1];
-    }) => updateOperation(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
-      closeOpModal();
-    },
-    onError: (err: unknown) => {
-      setOpModalError(extractError(err, 'Не удалось обновить операцию'));
-    },
-  });
-
-  const deleteOpMutation = useMutation({
-    mutationFn: deleteOperation,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
-      setDeletingOp(null);
-    },
-    onError: (err: unknown) => {
-      setDeletingOp(null);
-      alert(extractError(err, 'Не удалось удалить операцию'));
+      const msg = extractError(err, 'Не удалось разбить операцию');
+      setSplitOpError(msg);
+      toast.error(msg);
     },
   });
 
@@ -346,10 +336,11 @@ export default function RoutingSheetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
       setOpStatusChange(null);
+      toast.success('Статус операции изменён');
     },
     onError: (err: unknown) => {
       setOpStatusChange(null);
-      alert(extractError(err, 'Не удалось изменить статус операции'));
+      toast.error(extractError(err, 'Не удалось изменить статус операции'));
     },
   });
 
@@ -360,72 +351,41 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
       setAssigningPerformerOp(null);
       setSelectedPerformerId(null);
+      toast.success('Исполнитель назначен');
     },
     onError: (err: unknown) => {
-      alert(extractError(err, 'Не удалось назначить исполнителя'));
+      toast.error(extractError(err, 'Не удалось назначить исполнителя'));
     },
   });
 
   if (!user) return null;
 
   const roleLabel = ROLE_LABELS[user.role] ?? user.role;
-
-  const selectedPlan: PlanPositionListItem | undefined = plans?.find(
-    (p) => p.id === selectedPlanId,
-  );
-
   const canManageSheets = user.role === 'PlanningDept' || user.role === 'WorkshopChief';
   const canChangeStatus = user.role === 'PlanningDept' || user.role === 'WorkshopChief';
-  const canManageOps =
-    user.role === 'WorkshopChief' || user.role === 'WorkshopForeman' || user.role === 'PlanningDept';
   const canAssignPerformer = user.role === 'WorkshopChief' || user.role === 'WorkshopForeman';
   const canChangeOpStatus = user.role === 'WorkshopChief' || user.role === 'WorkshopForeman';
 
-  // RS modal helpers
-  function openCreateRs() {
-    setEditingSheet(null);
-    setRsModalError(null);
-    setIsRsModalOpen(true);
+  // ─── Helpers ───
+  function handleMonthChange(month: number, year: number) {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    setExpandedPlanId(null);
+    setExpandedSheetId(null);
   }
 
-  function openEditRs(sheet: RoutingSheetListItem) {
-    setEditingSheet(sheet);
-    setRsModalError(null);
-    setIsRsModalOpen(true);
-  }
-
-  function closeRsModal() {
-    setIsRsModalOpen(false);
-    setEditingSheet(null);
-    setRsModalError(null);
-  }
-
-  function handleRsSubmit(values: {
-    number: string;
-    name: string;
-    planPositionId: number | null;
-    productItemId: number | null;
-    unitId: number | null;
-    quantity: number;
-  }) {
-    setRsModalError(null);
-    if (editingSheet) {
-      updateRsMutation.mutate({ id: editingSheet.id, data: values });
+  function togglePlanExpand(planId: number) {
+    if (expandedPlanId === planId) {
+      setExpandedPlanId(null);
+      setExpandedSheetId(null);
     } else {
-      createRsMutation.mutate(values);
+      setExpandedPlanId(planId);
+      setExpandedSheetId(null);
     }
   }
 
-  // Status change helpers
-  function openStatusChange(sheet: RoutingSheetListItem, newStatusId: number) {
-    setStatusChangeSheet(sheet);
-    setTargetStatusId(newStatusId);
-  }
-
-  function getAvailableTransitions(sheet: RoutingSheetListItem): RoutingSheetStatus[] {
-    const nextIds = STATUS_TRANSITIONS[sheet.statusId] ?? [];
-    if (!statuses) return [];
-    return statuses.filter((s) => nextIds.includes(s.id));
+  function toggleSheetExpand(sheetId: number) {
+    setExpandedSheetId((prev) => (prev === sheetId ? null : sheetId));
   }
 
   function getTargetStatusName(): string {
@@ -433,213 +393,89 @@ export default function RoutingSheetsPage() {
     return statuses.find((s) => s.id === targetStatusId)?.name ?? '';
   }
 
-  // Expand/collapse row
-  function toggleExpand(sheetId: number) {
-    setExpandedSheetId((prev) => (prev === sheetId ? null : sheetId));
-  }
-
-  // Operation modal helpers
-  function openCreateOp() {
-    setEditingOp(null);
-    setOpModalError(null);
-    setIsOpModalOpen(true);
-  }
-
-  function openEditOp(op: OperationListItem) {
-    setEditingOp(op);
-    setOpModalError(null);
-    setIsOpModalOpen(true);
-  }
-
-  function closeOpModal() {
-    setIsOpModalOpen(false);
-    setEditingOp(null);
-    setOpModalError(null);
-  }
-
-  function handleOpSubmit(values: {
-    code: string | null;
-    name: string;
-    guildId: number | null;
-    operationTypeId: number | null;
-    performerId: number | null;
-    statusId: number | null;
-    price: number | null;
-    sum: number | null;
-    quantity: number;
-  }) {
-    setOpModalError(null);
-    if (editingOp) {
-      updateOpMutation.mutate({
-        id: editingOp.id,
-        data: {
-          seqNumber: editingOp.seqNumber,
-          code: values.code,
-          name: values.name,
-          statusId: values.statusId,
-          guildId: values.guildId,
-          operationTypeId: values.operationTypeId,
-          performerId: values.performerId,
-          price: values.price,
-          sum: values.sum,
-          quantity: values.quantity,
-        },
-      });
-    } else {
-      const nextSeq = (expandedOps?.length ?? 0) + 1;
-      createOpMutation.mutate({
-        routingSheetId: expandedSheetId!,
-        seqNumber: nextSeq,
-        code: values.code,
-        name: values.name,
-        statusId: values.statusId ?? 1,
-        guildId: values.guildId,
-        operationTypeId: values.operationTypeId,
-        performerId: values.performerId,
-        price: values.price,
-        sum: values.sum,
-        quantity: values.quantity,
-      });
-    }
-  }
-
-  // Operation status helpers
-  function getOpAvailableTransitions(op: OperationListItem): OperationStatus[] {
-    const currentId = op.statusId ?? 1;
-    const nextIds = OP_STATUS_TRANSITIONS[currentId] ?? [];
-    if (!opStatuses) return [];
-    return opStatuses.filter((s) => nextIds.includes(s.id));
-  }
-
   function getOpTargetStatusName(): string {
     if (!opStatusChange || !opStatuses) return '';
     return opStatuses.find((s) => s.id === opStatusChange.statusId)?.name ?? '';
   }
 
-  // Split helpers
-  function openSplit(sheet: RoutingSheetListItem) {
-    setSplitSheet(sheet);
-    setSplitError(null);
-    setIsSplitModalOpen(true);
+  function toggleOpSort(field: OpSortField) {
+    if (opSortField === field) {
+      setOpSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setOpSortField(field);
+      setOpSortDir('asc');
+    }
   }
 
-  function closeSplitModal() {
-    setIsSplitModalOpen(false);
-    setSplitSheet(null);
-    setSplitError(null);
+  const sortedOps = useMemo(() => {
+    if (!expandedOps || !opSortField) return expandedOps;
+    return [...expandedOps].sort((a, b) => {
+      const cmp = compareFieldValues(a[opSortField], b[opSortField]);
+      return opSortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [expandedOps, opSortField, opSortDir]);
+
+  function planHasRoutingSheets(planId: number): boolean {
+    return (rsByPlanId.get(planId)?.length ?? 0) > 0;
   }
 
-  function handleSplitSubmit(values: {
-    operationIds: number[];
-    newNumber: string;
-    newName: string;
-    newQuantity: number;
-  }) {
-    if (!splitSheet) return;
-    setSplitError(null);
-    splitMutation.mutate({ sourceId: splitSheet.id, ...values });
+  function getPlanRoutingSheets(planId: number): RoutingSheetListItem[] {
+    return rsByPlanId.get(planId) ?? [];
   }
 
-  const isRsSubmitting = createRsMutation.isPending || updateRsMutation.isPending;
-  const isOpSubmitting = createOpMutation.isPending || updateOpMutation.isPending;
-
+  // ─── Render ───
   return (
     <div className="min-h-screen bg-gray-50">
       <RoutingHeader user={user} roleLabel={roleLabel} onLogout={logout} />
 
       <main className="mx-auto px-4 sm:px-6 py-6">
-        {/* Toolbar */}
+        {/* Toolbar: Month picker + Guild filter */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
-          <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:justify-between">
-            <div className="flex flex-wrap items-stretch gap-3">
-              <Select
+          <div className="flex flex-wrap items-center gap-4">
+            <MonthYearPicker
+              month={selectedMonth}
+              year={selectedYear}
+              onChange={handleMonthChange}
+            />
+            {isPlanningDept && (
+              <Select<number>
                 className="h-full"
-                value={selectedPlanId}
-                onChange={setSelectedPlanId}
-                options={
-                  plans?.map((plan) => {
-                    const dateStr = formatDateRu(plan.documentDate);
-                    const label = dateStr !== '—' ? `${plan.name} - ${dateStr}` : plan.name;
-                    return { value: plan.id, label };
-                  }) ?? []
-                }
-                placeholder="Выберите план производства"
-                isLoading={isPlansLoading}
+                value={selectedGuildId}
+                onChange={(v) => {
+                  setSelectedGuildId(v);
+                  setExpandedPlanId(null);
+                  setExpandedSheetId(null);
+                }}
+                options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
+                placeholder="Все цеха"
               />
-
-              <Button
-                type="button"
-                size="small"
-                color="primary"
-                onClick={() => setIsCreatePlanOpen(true)}
-                icon={<Plus />}
-              >
-                Создать план
-              </Button>
-            </div>
-
-            {canManageSheets && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="small"
-                  color="primary"
-                  disabled={!selectedPlanId}
-                  onClick={openCreateRs}
-                  icon={<FileText />}
-                >
-                  Создать маршрутный лист
-                </Button>
-              </div>
+            )}
+            {!isPlanningDept && user?.guildName && (
+              <span className="text-sm text-gray-600">
+                Цех: <span className="font-semibold text-gray-900">{user.guildName}</span>
+              </span>
             )}
           </div>
         </section>
 
-        {/* Routing Sheets Table */}
+        {/* Plans table */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 overflow-hidden">
-          {!selectedPlan ? (
-            <div className="p-6 text-sm text-gray-500">
-              Выберите план производства, чтобы увидеть связанные маршрутные листы.
-            </div>
-          ) : isSheetsLoading ? (
+          {isPlansLoading ? (
             <div className="p-6 flex justify-center">
               <Spinner />
             </div>
-          ) : !routingSheets?.length ? (
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{selectedPlan.name}</h2>
-                  <p className="text-sm text-gray-500">
-                    {formatDateRu(selectedPlan.documentDate) !== '—'
-                      ? `Дата: ${formatDateRu(selectedPlan.documentDate)}`
-                      : ''}
-                    {selectedPlan.planningPeriod
-                      ? `${formatDateRu(selectedPlan.documentDate) !== '—' ? ' · ' : ''}Период: ${selectedPlan.planningPeriod}`
-                      : ''}
-                  </p>
-                </div>
-              </div>
-              <div className="text-center text-sm text-gray-500 py-4">
-                Маршрутные листы для этого плана ещё не созданы.
-              </div>
+          ) : !plans?.length ? (
+            <div className="p-6 text-sm text-gray-500">
+              Планы производства на выбранный период не найдены.
             </div>
           ) : (
             <>
               <div className="px-6 pt-5 pb-3">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">{selectedPlan.name}</h2>
-                    <p className="text-sm text-gray-500">
-                      {formatDateRu(selectedPlan.documentDate) !== '—'
-                        ? `Дата: ${formatDateRu(selectedPlan.documentDate)}`
-                        : ''}
-                      {selectedPlan.planningPeriod
-                        ? `${formatDateRu(selectedPlan.documentDate) !== '—' ? ' · ' : ''}Период: ${selectedPlan.planningPeriod}`
-                        : ''}
-                    </p>
-                  </div>
-                  <p className="text-sm text-gray-500">Всего: {routingSheets.length}</p>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Планы производства
+                  </h2>
+                  <p className="text-sm text-gray-500">Всего: {plans.length}</p>
                 </div>
               </div>
 
@@ -649,7 +485,7 @@ export default function RoutingSheetsPage() {
                     <tr className="border-b border-gray-200 bg-gray-50/50">
                       <th className="px-3 py-3 w-8" />
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Номер
+                        Код
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
                         Наименование
@@ -657,17 +493,19 @@ export default function RoutingSheetsPage() {
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
                         Изделие
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Ед. изм.
-                      </th>
+                      {isPlanningDept && (
+                        <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
+                          Цех
+                        </th>
+                      )}
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
                         Кол-во
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
                         Статус
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Создан
+                      <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
+                        МЛ
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-right">
                         Действия
@@ -675,297 +513,60 @@ export default function RoutingSheetsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {routingSheets.map((sheet) => {
-                      const transitions = getAvailableTransitions(sheet);
-                      const isExpanded = expandedSheetId === sheet.id;
+                    {plans.map((plan) => {
+                      const isExpanded = expandedPlanId === plan.id;
+                      const hasRS = planHasRoutingSheets(plan.id);
+                      const planRS = getPlanRoutingSheets(plan.id);
+                      const isOpen = plan.statusId === 1;
 
                       return (
-                        <>
-                          <tr
-                            key={sheet.id}
-                            className={`border-b border-gray-100 hover:bg-gray-50/50 transition cursor-pointer ${isExpanded ? 'bg-primary/5' : ''}`}
-                            onClick={() => toggleExpand(sheet.id)}
-                          >
-                            <td className="px-3 py-4 text-gray-400">
-                              {isExpanded ? (
-                                <ChevronDown className="w-4 h-4" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4" />
-                              )}
-                            </td>
-                            <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
-                              {sheet.number}
-                            </td>
-                            <td className="px-4 py-4 text-gray-700 max-w-[200px] truncate">
-                              {sheet.name}
-                            </td>
-                            <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
-                              {sheet.productItemName ?? '—'}
-                            </td>
-                            <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
-                              {sheet.unitName ?? '—'}
-                            </td>
-                            <td className="px-4 py-4 text-gray-600 text-center whitespace-nowrap">
-                              {sheet.quantity}
-                            </td>
-                            <td className="px-4 py-4 text-center whitespace-nowrap">
-                              <StatusBadge
-                                statusId={sheet.statusId}
-                                statusName={sheet.statusName}
-                                statuses={statuses}
-                              />
-                            </td>
-                            <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
-                              {formatDateRu(sheet.createdAt)}
-                            </td>
-                            <td
-                              className="px-4 py-4 text-right whitespace-nowrap"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="inline-flex gap-1">
-                                {canChangeStatus &&
-                                  transitions.map((t) => {
-                                    const Icon = STATUS_ICONS[t.id] ?? Play;
-                                    const hoverStyle =
-                                      STATUS_ICON_STYLES[t.id] ??
-                                      'hover:bg-primary/8 hover:text-primary';
-                                    return (
-                                      <button
-                                        key={t.id}
-                                        type="button"
-                                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 ${hoverStyle} transition cursor-pointer`}
-                                        onClick={() => openStatusChange(sheet, t.id)}
-                                        title={`Сменить статус на: ${t.name}`}
-                                      >
-                                        <Icon className="w-4 h-4" />
-                                      </button>
-                                    );
-                                  })}
-
-                                {canManageSheets && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
-                                      onClick={() => openSplit(sheet)}
-                                      title="Разбить маршрутный лист"
-                                    >
-                                      <Scissors className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-primary/8 hover:text-primary transition cursor-pointer"
-                                      onClick={() => openEditRs(sheet)}
-                                      title="Редактировать"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-error transition cursor-pointer"
-                                      onClick={() => setDeletingSheet(sheet)}
-                                      title="Удалить"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-
-                          {/* Expanded operations panel */}
-                          {isExpanded && (
-                            <tr key={`ops-${sheet.id}`}>
-                              <td colSpan={9} className="p-0">
-                                <div className="bg-primary/3 border-b border-gray-200 p-4">
-                                  <div className="flex items-center justify-between pl-2 mb-2">
-                                    <h3 className="text-sm font-semibold text-gray-700">
-                                      Операции маршрутного листа «{sheet.number}»
-                                    </h3>
-                                    {canManageOps && (
-                                      <Button
-                                        type="button"
-                                        size="small"
-                                        color="primary"
-                                        onClick={openCreateOp}
-                                        icon={<Plus />}
-                                      />
-                                    )}
-                                  </div>
-
-                                  {isOpsLoading ? (
-                                    <div className="flex justify-center py-4">
-                                      <Spinner size="sm" />
-                                    </div>
-                                  ) : !expandedOps?.length ? (
-                                    <p className="text-sm text-gray-500 py-2">
-                                      Операции ещё не добавлены.
-                                    </p>
-                                  ) : (
-                                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                                      <table className="w-full text-sm text-left">
-                                        <thead>
-                                          <tr className="border-b border-gray-200 bg-gray-50/50">
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 w-10">
-                                              №
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600">
-                                              Код
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600">
-                                              Наименование
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600">
-                                              Тип
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600">
-                                              Цех
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600">
-                                              Исполнитель
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 text-center">
-                                              Кол-во
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
-                                              Цена
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
-                                              Сумма
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 text-center">
-                                              Статус
-                                            </th>
-                                            <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
-                                              Действия
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {expandedOps.map((op) => {
-                                            const opTransitions =
-                                              getOpAvailableTransitions(op);
-
-                                            return (
-                                              <tr
-                                                key={op.id}
-                                                className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition"
-                                              >
-                                                <td className="px-4 py-3 text-gray-500 font-mono">
-                                                  {op.seqNumber}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                  {op.code ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 font-medium max-w-[160px] truncate">
-                                                  {op.name}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                  {op.operationTypeName ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                  {op.guildName ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="truncate max-w-[120px]">
-                                                      {op.performerName ?? '—'}
-                                                    </span>
-                                                    {canAssignPerformer && !op.performerId && (
-                                                      <button
-                                                        type="button"
-                                                        className="inline-flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-primary hover:bg-primary/8 transition cursor-pointer"
-                                                        onClick={() => {
-                                                          setAssigningPerformerOp(op);
-                                                          setSelectedPerformerId(null);
-                                                        }}
-                                                        title="Назначить исполнителя"
-                                                      >
-                                                        <UserPlus className="w-3.5 h-3.5" />
-                                                      </button>
-                                                    )}
-                                                  </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 text-center whitespace-nowrap">
-                                                  {op.quantity}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
-                                                  {op.price != null
-                                                    ? op.price.toFixed(2)
-                                                    : '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
-                                                  {op.sum != null ? op.sum.toFixed(2) : '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-center whitespace-nowrap">
-                                                  <OpStatusBadge
-                                                    statusId={op.statusId}
-                                                    statusName={op.statusName}
-                                                    statuses={opStatuses}
-                                                  />
-                                                </td>
-                                                <td className="px-4 py-3 text-right whitespace-nowrap">
-                                                  <div className="inline-flex gap-0.5">
-                                                    {canChangeOpStatus &&
-                                                      opTransitions.map((t) => {
-                                                        const Icon =
-                                                          STATUS_ICONS[t.id] ?? Clock;
-                                                        const hoverStyle =
-                                                          STATUS_ICON_STYLES[t.id] ??
-                                                          'hover:bg-primary/8 hover:text-primary';
-                                                        return (
-                                                          <button
-                                                            key={t.id}
-                                                            type="button"
-                                                            className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 ${hoverStyle} transition cursor-pointer`}
-                                                            onClick={() =>
-                                                              setOpStatusChange({
-                                                                op,
-                                                                statusId: t.id,
-                                                              })
-                                                            }
-                                                            title={`Статус: ${t.name}`}
-                                                          >
-                                                            <Icon className="w-3.5 h-3.5" />
-                                                          </button>
-                                                        );
-                                                      })}
-
-                                                    {canManageOps && (
-                                                      <>
-                                                        <button
-                                                          type="button"
-                                                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-primary/8 hover:text-primary transition cursor-pointer"
-                                                          onClick={() => openEditOp(op)}
-                                                          title="Редактировать"
-                                                        >
-                                                          <Pencil className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                          type="button"
-                                                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-red-50 hover:text-error transition cursor-pointer"
-                                                          onClick={() => setDeletingOp(op)}
-                                                          title="Удалить"
-                                                        >
-                                                          <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                      </>
-                                                    )}
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            );
-                                          })}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </>
+                        <PlanRow
+                          key={plan.id}
+                          plan={plan}
+                          isExpanded={isExpanded}
+                          hasRS={hasRS}
+                          planRS={planRS}
+                          isOpen={isOpen}
+                          isPlanningDept={isPlanningDept}
+                          canManageSheets={canManageSheets}
+                          planStatuses={planStatuses}
+                          statuses={statuses}
+                          opStatuses={opStatuses}
+                          expandedSheetId={expandedSheetId}
+                          routingSheetsForPlan={isExpanded ? routingSheetsForPlan : undefined}
+                          isSheetsLoading={isExpanded ? isSheetsLoading : false}
+                          expandedOps={sortedOps}
+                          isOpsLoading={isOpsLoading}
+                          canChangeStatus={canChangeStatus}
+                          canAssignPerformer={canAssignPerformer}
+                          canChangeOpStatus={canChangeOpStatus}
+                          opSortField={opSortField}
+                          opSortDir={opSortDir}
+                          onTogglePlan={() => togglePlanExpand(plan.id)}
+                          onToggleSheet={toggleSheetExpand}
+                          onGenerate={() => setGeneratingPlan(plan)}
+                          onClosePlan={() => setClosingPlan(plan)}
+                          onStatusChange={(sheet, statusId) => {
+                            setStatusChangeSheet(sheet);
+                            setTargetStatusId(statusId);
+                          }}
+                          onSplitSheet={(sheet) => {
+                            setSplitSheet(sheet);
+                            setSplitSheetError(null);
+                          }}
+                          onSplitOp={(op) => {
+                            setSplitOp(op);
+                            setSplitOpError(null);
+                          }}
+                          onOpStatusChange={(op, statusId) =>
+                            setOpStatusChange({ op, statusId })
+                          }
+                          onAssignPerformer={(op) => {
+                            setAssigningPerformerOp(op);
+                            setSelectedPerformerId(null);
+                          }}
+                          onToggleOpSort={toggleOpSort}
+                        />
                       );
                     })}
                   </tbody>
@@ -976,91 +577,44 @@ export default function RoutingSheetsPage() {
         </section>
       </main>
 
-      {/* Create plan modal */}
-      <CreatePlanModal
-        isOpen={isCreatePlanOpen}
-        form={createForm}
-        formError={formError}
-        isSubmitting={createPlanMutation.isPending}
-        onFieldChange={(field, value) =>
-          setCreateForm((prev) => ({ ...prev, [field]: value }))
-        }
-        onClose={() => {
-          setIsCreatePlanOpen(false);
-          setFormError(null);
-        }}
-        onSubmit={() => createPlanMutation.mutate()}
-      />
-
-      {/* Create / Edit routing sheet modal */}
-      <RoutingSheetModal
-        isOpen={isRsModalOpen}
-        editingSheet={editingSheet}
-        defaultPlanPositionId={selectedPlanId}
-        isSubmitting={isRsSubmitting}
-        error={rsModalError}
-        onClose={closeRsModal}
-        onSubmit={handleRsSubmit}
-      />
-
-      {/* Operation modal */}
-      <OperationModal
-        isOpen={isOpModalOpen}
-        editingOp={editingOp}
-        isSubmitting={isOpSubmitting}
-        error={opModalError}
-        onClose={closeOpModal}
-        onSubmit={handleOpSubmit}
-      />
-
-      {/* Split routing sheet modal */}
-      <SplitRoutingSheetModal
-        isOpen={isSplitModalOpen}
-        sourceSheet={splitSheet}
-        isSubmitting={splitMutation.isPending}
-        error={splitError}
-        onClose={closeSplitModal}
-        onSubmit={handleSplitSubmit}
-      />
-
-      {/* Delete routing sheet confirmation */}
-      {deletingSheet && (
+      {/* Generate RS confirmation */}
+      {generatingPlan && (
         <ConfirmDialog
-          title="Удаление маршрутного листа"
-          message={`Вы уверены, что хотите удалить маршрутный лист «${deletingSheet.number}»? Все связанные операции также будут удалены. Это действие нельзя отменить.`}
-          confirmLabel="Удалить"
-          confirmLoadingLabel="Удаление..."
-          confirmColor="error"
-          confirmIcon={<Trash2 className="w-4 h-4" />}
-          isLoading={deleteRsMutation.isPending}
-          onConfirm={() => deleteRsMutation.mutate(deletingSheet.id)}
-          onCancel={() => setDeletingSheet(null)}
+          title="Формирование маршрутного листа"
+          message={`Сформировать маршрутный лист для плана «${generatingPlan.positionCode}» (${generatingPlan.productItemName ?? generatingPlan.name}, ${generatingPlan.quantityPlanned} шт.)?`}
+          confirmLabel="Сформировать"
+          confirmLoadingLabel="Формирование..."
+          confirmColor="primary"
+          confirmIcon={<Zap className="w-4 h-4" />}
+          isLoading={generateMutation.isPending}
+          onConfirm={() => generateMutation.mutate(generatingPlan.id)}
+          onCancel={() => setGeneratingPlan(null)}
         />
       )}
 
-      {/* Delete operation confirmation */}
-      {deletingOp && (
+      {/* Close plan confirmation */}
+      {closingPlan && (
         <ConfirmDialog
-          title="Удаление операции"
-          message={`Удалить операцию «${deletingOp.name}» (№${deletingOp.seqNumber})? Это действие нельзя отменить.`}
-          confirmLabel="Удалить"
-          confirmLoadingLabel="Удаление..."
+          title="Закрытие плана"
+          message={`Закрыть план «${closingPlan.positionCode}»? После закрытия формирование новых МЛ будет невозможно.`}
+          confirmLabel="Закрыть план"
+          confirmLoadingLabel="Закрытие..."
           confirmColor="error"
-          confirmIcon={<Trash2 className="w-4 h-4" />}
-          isLoading={deleteOpMutation.isPending}
-          onConfirm={() => deleteOpMutation.mutate(deletingOp.id)}
-          onCancel={() => setDeletingOp(null)}
+          confirmIcon={<Lock className="w-4 h-4" />}
+          isLoading={closePlanMutation.isPending}
+          onConfirm={() => closePlanMutation.mutate(closingPlan.id)}
+          onCancel={() => setClosingPlan(null)}
         />
       )}
 
-      {/* Status change confirmation (routing sheet) */}
+      {/* RS status change confirmation */}
       {statusChangeSheet &&
         targetStatusId &&
         (() => {
           const TargetIcon = STATUS_ICONS[targetStatusId] ?? Play;
           return (
             <ConfirmDialog
-              title="Изменение статуса"
+              title="Изменение статуса МЛ"
               message={`Сменить статус маршрутного листа «${statusChangeSheet.number}» на «${getTargetStatusName()}»?`}
               confirmLabel="Сменить"
               confirmLoadingLabel="Смена статуса..."
@@ -1101,6 +655,38 @@ export default function RoutingSheetsPage() {
             />
           );
         })()}
+
+      {/* Split RS modal */}
+      <SplitQuantityModal
+        isOpen={splitSheet !== null}
+        title={`Разбить МЛ «${splitSheet?.number ?? ''}»`}
+        currentQuantity={splitSheet?.quantity ?? 1}
+        isSubmitting={splitRsMutation.isPending}
+        error={splitSheetError}
+        onClose={() => {
+          setSplitSheet(null);
+          setSplitSheetError(null);
+        }}
+        onSubmit={(qty) => {
+          if (splitSheet) splitRsMutation.mutate({ id: splitSheet.id, splitQuantity: qty });
+        }}
+      />
+
+      {/* Split operation modal */}
+      <SplitQuantityModal
+        isOpen={splitOp !== null}
+        title={`Разбить операцию «${splitOp?.name ?? ''}»`}
+        currentQuantity={splitOp?.quantity ?? 1}
+        isSubmitting={splitOpMutation.isPending}
+        error={splitOpError}
+        onClose={() => {
+          setSplitOp(null);
+          setSplitOpError(null);
+        }}
+        onSubmit={(qty) => {
+          if (splitOp) splitOpMutation.mutate({ id: splitOp.id, splitQuantity: qty });
+        }}
+      />
 
       {/* Assign performer modal */}
       {assigningPerformerOp && (
@@ -1165,7 +751,416 @@ export default function RoutingSheetsPage() {
           </div>
         </div>
       )}
-
     </div>
+  );
+}
+
+// ─── Plan Row (extracted for readability) ───
+
+interface PlanRowProps {
+  plan: PlanPositionListItem;
+  isExpanded: boolean;
+  hasRS: boolean;
+  planRS: RoutingSheetListItem[];
+  isOpen: boolean;
+  isPlanningDept: boolean;
+  canManageSheets: boolean;
+  planStatuses?: import('../types/plan').PlanStatus[];
+  statuses?: RoutingSheetStatus[];
+  opStatuses?: OperationStatus[];
+  expandedSheetId: number | null;
+  routingSheetsForPlan?: RoutingSheetListItem[];
+  isSheetsLoading: boolean;
+  expandedOps?: OperationListItem[];
+  isOpsLoading: boolean;
+  canChangeStatus: boolean;
+  canAssignPerformer: boolean;
+  canChangeOpStatus: boolean;
+  opSortField: OpSortField | null;
+  opSortDir: SortDirection;
+  onTogglePlan: () => void;
+  onToggleSheet: (id: number) => void;
+  onGenerate: () => void;
+  onClosePlan: () => void;
+  onStatusChange: (sheet: RoutingSheetListItem, statusId: number) => void;
+  onSplitSheet: (sheet: RoutingSheetListItem) => void;
+  onSplitOp: (op: OperationListItem) => void;
+  onOpStatusChange: (op: OperationListItem, statusId: number) => void;
+  onAssignPerformer: (op: OperationListItem) => void;
+  onToggleOpSort: (field: OpSortField) => void;
+}
+
+function PlanRow({
+  plan,
+  isExpanded,
+  hasRS,
+  planRS,
+  isOpen,
+  isPlanningDept,
+  canManageSheets,
+  planStatuses,
+  statuses,
+  opStatuses,
+  expandedSheetId,
+  routingSheetsForPlan,
+  isSheetsLoading,
+  expandedOps,
+  isOpsLoading,
+  canChangeStatus,
+  canAssignPerformer,
+  canChangeOpStatus,
+  opSortField,
+  opSortDir,
+  onTogglePlan,
+  onToggleSheet,
+  onGenerate,
+  onClosePlan,
+  onStatusChange,
+  onSplitSheet,
+  onSplitOp,
+  onOpStatusChange,
+  onAssignPerformer,
+  onToggleOpSort,
+}: PlanRowProps) {
+  const colSpan = isPlanningDept ? 9 : 8;
+
+  return (
+    <>
+      <tr
+        className="border-b border-gray-100 hover:bg-gray-50/50 transition cursor-pointer"
+        onClick={onTogglePlan}
+      >
+        <td className="px-3 py-4 text-gray-400">
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </td>
+        <td className="px-4 py-4 font-medium text-gray-900 whitespace-nowrap">
+          {plan.positionCode}
+        </td>
+        <td className="px-4 py-4 text-gray-700 max-w-[200px] truncate">
+          {plan.name}
+        </td>
+        <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
+          {plan.productItemName ?? '—'}
+        </td>
+        {isPlanningDept && (
+          <td className="px-4 py-4 text-gray-600 whitespace-nowrap">
+            {plan.guildName ?? '—'}
+          </td>
+        )}
+        <td className="px-4 py-4 text-gray-600 text-center whitespace-nowrap">
+          {plan.quantityPlanned}
+        </td>
+        <td className="px-4 py-4 text-center whitespace-nowrap">
+          <PlanStatusBadge
+            statusId={plan.statusId}
+            statusName={plan.statusName}
+            statuses={planStatuses}
+          />
+        </td>
+        <td className="px-4 py-4 text-center whitespace-nowrap">
+          {hasRS ? (
+            <span className="text-xs text-primary font-medium">
+              {planRS.length} МЛ
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400">—</span>
+          )}
+        </td>
+        <td
+          className="px-4 py-4 text-right whitespace-nowrap"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="inline-flex gap-1">
+            {canManageSheets && isOpen && !hasRS && (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg text-xs font-medium text-primary bg-primary/8 hover:bg-primary/15 transition cursor-pointer gap-1"
+                onClick={onGenerate}
+                title="Сформировать маршрутный лист"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Сформировать
+              </button>
+            )}
+            {canManageSheets && isOpen && (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-error transition cursor-pointer"
+                onClick={onClosePlan}
+                title="Закрыть план"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+
+      {/* Expanded: Routing Sheets for this plan */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={colSpan} className="p-0">
+            <div className="bg-primary/3 border-b border-gray-200">
+              {isSheetsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Spinner size="sm" />
+                </div>
+              ) : !routingSheetsForPlan?.length ? (
+                <div className="px-6 py-4 text-sm text-gray-500">
+                  Маршрутные листы для этого плана ещё не сформированы.
+                </div>
+              ) : (
+                <div className="p-4 space-y-2">
+                  {routingSheetsForPlan.map((sheet) => {
+                    const isSheetExpanded = expandedSheetId === sheet.id;
+                    const transitions = canChangeStatus
+                      ? (statuses?.filter((s) => (STATUS_TRANSITIONS[sheet.statusId] ?? []).includes(s.id)) ?? [])
+                      : [];
+
+                    return (
+                      <div
+                        key={sheet.id}
+                        className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                      >
+                        {/* Sheet header row */}
+                        <div
+                          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50/50 transition"
+                          onClick={() => onToggleSheet(sheet.id)}
+                        >
+                          <span className="text-gray-400">
+                            {isSheetExpanded ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </span>
+                          <span className="font-medium text-gray-900 text-sm">
+                            {sheet.number}
+                          </span>
+                          <span className="text-sm text-gray-600 truncate max-w-[200px]">
+                            {sheet.name}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            Кол-во: {sheet.quantity}
+                          </span>
+                          <StatusBadge
+                            statusId={sheet.statusId}
+                            statusName={sheet.statusName}
+                            statuses={statuses}
+                          />
+                          <div
+                            className="ml-auto inline-flex gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {transitions.map((t) => {
+                              const Icon = STATUS_ICONS[t.id] ?? Play;
+                              const hoverStyle =
+                                STATUS_ICON_STYLES[t.id] ??
+                                'hover:bg-primary/8 hover:text-primary';
+                              return (
+                                <button
+                                  key={t.id}
+                                  type="button"
+                                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 ${hoverStyle} transition cursor-pointer`}
+                                  onClick={() => onStatusChange(sheet, t.id)}
+                                  title={`Статус: ${t.name}`}
+                                >
+                                  <Icon className="w-4 h-4" />
+                                </button>
+                              );
+                            })}
+                            {canManageSheets && (
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
+                                onClick={() => onSplitSheet(sheet)}
+                                title="Разбить маршрутный лист"
+                              >
+                                <Scissors className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Sheet operations */}
+                        {isSheetExpanded && (
+                          <div className="border-t border-gray-200">
+                            {isOpsLoading ? (
+                              <div className="flex justify-center py-4">
+                                <Spinner size="sm" />
+                              </div>
+                            ) : !expandedOps?.length ? (
+                              <p className="text-sm text-gray-500 px-4 py-3">
+                                Операций нет.
+                              </p>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                  <thead>
+                                    <tr className="border-b border-gray-200 bg-gray-50/50">
+                                      <SortTh field="seqNumber" label="№" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} className="w-10" />
+                                      <SortTh field="code" label="Код" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="name" label="Наименование" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="operationTypeName" label="Тип" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="guildName" label="Цех" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="performerName" label="Исполнитель" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="quantity" label="Кол-во" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
+                                      <SortTh field="price" label="Цена" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
+                                      <SortTh field="sum" label="Сумма" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
+                                      <SortTh field="statusName" label="Статус" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
+                                      <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
+                                        Действия
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {expandedOps.map((op) => {
+                                      const opTransitions = canChangeOpStatus
+                                        ? (opStatuses?.filter((s) => (OP_STATUS_TRANSITIONS[op.statusId ?? 1] ?? []).includes(s.id)) ?? [])
+                                        : [];
+
+                                      return (
+                                        <tr
+                                          key={op.id}
+                                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition"
+                                        >
+                                          <td className="px-4 py-3 text-gray-500 font-mono">
+                                            {op.seqNumber}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                            {op.code ?? '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-900 font-medium max-w-[160px] truncate">
+                                            {op.name}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                            {op.operationTypeName ?? '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                            {op.guildName ?? '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                                            <div className="flex items-center gap-1">
+                                              <span className="truncate max-w-[120px]">
+                                                {op.performerName ?? '—'}
+                                              </span>
+                                              {canAssignPerformer && !op.performerId && (
+                                                <button
+                                                  type="button"
+                                                  className="inline-flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-primary hover:bg-primary/8 transition cursor-pointer"
+                                                  onClick={() => onAssignPerformer(op)}
+                                                  title="Назначить исполнителя"
+                                                >
+                                                  <UserPlus className="w-3.5 h-3.5" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 text-center whitespace-nowrap">
+                                            {op.quantity}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
+                                            {op.price != null ? op.price.toFixed(2) : '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
+                                            {op.sum != null ? op.sum.toFixed(2) : '—'}
+                                          </td>
+                                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                                            <OpStatusBadge
+                                              statusId={op.statusId}
+                                              statusName={op.statusName}
+                                              statuses={opStatuses}
+                                            />
+                                          </td>
+                                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                                            <div className="inline-flex gap-0.5">
+                                              {opTransitions.map((t) => {
+                                                const Icon = STATUS_ICONS[t.id] ?? Clock;
+                                                const hoverStyle =
+                                                  STATUS_ICON_STYLES[t.id] ??
+                                                  'hover:bg-primary/8 hover:text-primary';
+                                                return (
+                                                  <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 ${hoverStyle} transition cursor-pointer`}
+                                                    onClick={() => onOpStatusChange(op, t.id)}
+                                                    title={`Статус: ${t.name}`}
+                                                  >
+                                                    <Icon className="w-3.5 h-3.5" />
+                                                  </button>
+                                                );
+                                              })}
+                                              <button
+                                                type="button"
+                                                className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
+                                                onClick={() => onSplitOp(op)}
+                                                title="Разбить операцию"
+                                              >
+                                                <Scissors className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ─── Sortable table header ───
+
+function SortTh({
+  field,
+  label,
+  current,
+  dir,
+  onSort,
+  align,
+  className = '',
+}: {
+  field: OpSortField;
+  label: string;
+  current: OpSortField | null;
+  dir: SortDirection;
+  onSort: (field: OpSortField) => void;
+  align?: 'left' | 'center' | 'right';
+  className?: string;
+}) {
+  const alignClass =
+    align === 'center'
+      ? 'text-center justify-center'
+      : align === 'right'
+        ? 'text-right justify-end'
+        : '';
+  return (
+    <th
+      className={`px-4 py-2.5 font-semibold text-gray-600 cursor-pointer select-none hover:text-gray-900 transition-colors ${className}`}
+      onClick={() => onSort(field)}
+    >
+      <span className={`inline-flex items-center gap-1 ${alignClass}`}>
+        {label}
+        <SortIcon active={current === field} direction={dir} />
+      </span>
+    </th>
   );
 }

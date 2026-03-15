@@ -1,4 +1,5 @@
-import type { InputHTMLAttributes } from 'react';
+import { useState, type InputHTMLAttributes } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 type InputSize = 'sm' | 'default';
 
@@ -21,15 +22,19 @@ export function TextInput({
   containerClassName,
   inputSize = 'sm',
   className,
+  type,
   ...inputProps
 }: TextInputProps) {
+  const isPassword = type === 'password';
+  const [showPassword, setShowPassword] = useState(false);
+
   const baseClasses = `w-full ${sizeClasses[inputSize]} rounded-xl text-gray-900 focus:outline-none transition placeholder-gray-400 border`;
 
   const borderClasses = error
     ? 'border-error focus:border-error'
     : 'border-gray-300 focus:border-primary';
 
-  const mergedClassName = [baseClasses, borderClasses, className]
+  const mergedClassName = [baseClasses, borderClasses, isPassword && 'pr-10', className]
     .filter(Boolean)
     .join(' ');
 
@@ -41,7 +46,24 @@ export function TextInput({
       >
         {label}
       </label>
-      <input id={id} className={mergedClassName} {...inputProps} />
+      <div className="relative">
+        <input
+          id={id}
+          type={isPassword && showPassword ? 'text' : type}
+          className={mergedClassName}
+          {...inputProps}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition cursor-pointer"
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        )}
+      </div>
       {error && (
         <p className="ml-1.5 mt-1.5 text-sm text-error">
           {error}

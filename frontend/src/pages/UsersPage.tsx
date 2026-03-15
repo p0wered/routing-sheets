@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLE_LABELS } from '../types/auth';
 import type { User } from '../types/auth';
+import type { UserFormData } from '../components/UserModal';
 import { RoutingHeader } from '../components/Header';
 import { Button } from '../components/Button';
 import { UserModal } from '../components/UserModal';
 import { Spinner } from '../components/Spinner';
 import { getUsers, createUser, updateUser, deleteUser } from '../api/users';
-import { Pencil, Trash2, ChevronLeft, UserPlus, X } from 'lucide-react';
+import { guildsApi } from '../api/references';
+import { toast, extractError } from '../utils/toast';
+import { Pencil, Trash2, UserPlus } from 'lucide-react';
 
 export default function UsersPage() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,14 +27,22 @@ export default function UsersPage() {
     queryFn: getUsers,
   });
 
+  const { data: guilds = [] } = useQuery({
+    queryKey: ['guilds'],
+    queryFn: guildsApi.getAll,
+  });
+
   const createMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       closeModal();
+      toast.success('Пользователь создан');
     },
     onError: (error: unknown) => {
-      setModalError(extractError(error, 'Не удалось создать пользователя'));
+      const msg = extractError(error, 'Не удалось создать пользователя');
+      setModalError(msg);
+      toast.error(msg);
     },
   });
 
@@ -43,9 +52,12 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       closeModal();
+      toast.success('Пользователь обновлён');
     },
     onError: (error: unknown) => {
-      setModalError(extractError(error, 'Не удалось обновить пользователя'));
+      const msg = extractError(error, 'Не удалось обновить пользователя');
+      setModalError(msg);
+      toast.error(msg);
     },
   });
 
@@ -54,6 +66,11 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setDeletingId(null);
+      toast.success('Пользователь удалён');
+    },
+    onError: (error: unknown) => {
+      setDeletingId(null);
+      toast.error(extractError(error, 'Не удалось удалить пользователя'));
     },
   });
 
@@ -79,18 +96,26 @@ export default function UsersPage() {
     setModalError(null);
   }
 
-  const workshopChiefId = users?.find((u) => u.role === 'WorkshopChief')?.id ?? null;
+  function chiefExistsInGuild(guildId: number, excludeUserId?: number): boolean {
+    return (
+      users?.some(
+        (u) =>
+          u.role === 'WorkshopChief' &&
+          u.guildId === guildId &&
+          u.id !== excludeUserId
+      ) ?? false
+    );
+  }
 
-  const disabledRoles =
-    workshopChiefId !== null && workshopChiefId !== editingUser?.id
-      ? ['WorkshopChief']
-      : [];
-
-  function handleSubmit(data: { username: string; password: string; role: string }) {
+  function handleSubmit(data: UserFormData) {
     setModalError(null);
 
-    if (disabledRoles.includes(data.role)) {
-      setModalError('Начальник цеха может быть только один');
+    if (
+      data.role === 'WorkshopChief' &&
+      data.guildId !== null &&
+      chiefExistsInGuild(data.guildId, editingUser?.id)
+    ) {
+      setModalError('В этом цехе уже есть начальник');
       return;
     }
 
@@ -98,16 +123,20 @@ export default function UsersPage() {
       updateMutation.mutate({
         id: editingUser.id,
         data: {
-          username: data.username.trim(),
+          username: data.username,
+          fullName: data.fullName,
           password: data.password || undefined,
           role: data.role,
+          guildId: data.guildId,
         },
       });
     } else {
       createMutation.mutate({
-        username: data.username.trim(),
+        username: data.username,
         password: data.password,
+        fullName: data.fullName,
         role: data.role,
+        guildId: data.guildId,
       });
     }
   }
@@ -128,21 +157,12 @@ export default function UsersPage() {
     <div className="min-h-screen bg-gray-50">
       <RoutingHeader user={user} roleLabel={roleLabel} onLogout={logout} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
           <div className="flex items-center justify-between">
-            <div
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1 hover:text-primary transition cursor-pointer"
-            >
-              <ChevronLeft
-                className="w-5 h-5"
-                strokeWidth={1.5}
-              />
-              <p className="text-base">
-                На главную
-              </p>
-            </div>
+            <p className="pl-3 text-base font-bold">
+              Управление пользователями
+            </p>
             <Button type="button" size="small" color="primary" onClick={openCreate} icon={<UserPlus />}>
               Добавить пользователя
             </Button>
@@ -164,6 +184,7 @@ export default function UsersPage() {
                 <tr className="border-b border-gray-200 bg-gray-50/50">
                   <th className="px-6 py-3 font-semibold text-gray-600">Логин</th>
                   <th className="px-6 py-3 font-semibold text-gray-600">Роль</th>
+                  <th className="px-6 py-3 font-semibold text-gray-600">Цех</th>
                   <th className="px-6 py-3 font-semibold text-gray-600 text-right">
                     Действия
                   </th>
@@ -182,6 +203,9 @@ export default function UsersPage() {
                       <span className="inline-block bg-primary/8 text-primary rounded-lg px-2.5 py-1 text-xs font-semibold">
                         {ROLE_LABELS[u.role] ?? u.role}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {u.guildName ?? '—'}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex gap-2">
@@ -216,9 +240,9 @@ export default function UsersPage() {
         isOpen={isModalOpen}
         user={editingUser}
         currentUserId={user.id}
+        guilds={guilds}
         isSubmitting={isSubmitting}
         error={modalError}
-        disabledRoles={disabledRoles}
         onClose={closeModal}
         onSubmit={handleSubmit}
       />
@@ -267,15 +291,4 @@ export default function UsersPage() {
       )}
     </div>
   );
-}
-
-function extractError(error: unknown, fallback: string): string {
-  const axiosError = error as { response?: { data?: string | { message?: string } } };
-  if (typeof axiosError.response?.data === 'string') {
-    return axiosError.response.data;
-  }
-  if (typeof axiosError.response?.data === 'object' && axiosError.response.data?.message) {
-    return axiosError.response.data.message;
-  }
-  return fallback;
 }

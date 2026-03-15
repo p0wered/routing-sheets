@@ -33,7 +33,7 @@ export function Select<TValue = string>({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: Event) => {
       if (!containerRef.current) return;
       if (containerRef.current.contains(event.target as Node)) return;
       setIsOpen(false);

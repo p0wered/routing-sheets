@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Modal } from './Modal';
 import { TextInput } from './TextInput';
 import { Button } from './Button';

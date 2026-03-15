@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save } from 'lucide-react';
 import type { User } from '../types/auth';
 import { ROLE_LABELS } from '../types/auth';
+import type { NamedReference } from '../types/references';
 import { Modal } from './Modal';
 import { TextInput } from './TextInput';
 import { Select, type SelectOption } from './DropdownSelector';
@@ -14,33 +15,45 @@ const roleOptions: SelectOption<string>[] = Object.entries(ROLE_LABELS).map(
 interface FieldErrors {
   username?: string;
   password?: string;
+  fullName?: string;
   role?: string;
+  guildId?: string;
+}
+
+export interface UserFormData {
+  username: string;
+  password: string;
+  fullName: string;
+  role: string;
+  guildId: number | null;
 }
 
 interface UserModalProps {
   isOpen: boolean;
   user: User | null;
   currentUserId: number;
+  guilds: NamedReference[];
   isSubmitting: boolean;
   error: string | null;
-  disabledRoles?: string[];
   onClose: () => void;
-  onSubmit: (data: { username: string; password: string; role: string }) => void;
+  onSubmit: (data: UserFormData) => void;
 }
 
 export function UserModal({
   isOpen,
   user,
   currentUserId,
+  guilds,
   isSubmitting,
   error,
-  disabledRoles = [],
   onClose,
   onSubmit,
 }: UserModalProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<string | null>(null);
+  const [guildId, setGuildId] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [prevIsOpen, setPrevIsOpen] = useState(false);
 
@@ -49,23 +62,26 @@ export function UserModal({
     if (isOpen) {
       setUsername(user?.username ?? '');
       setPassword('');
+      setFullName(user?.fullName ?? '');
       setRole(user?.role ?? null);
+      setGuildId(user?.guildId ?? null);
       setFieldErrors({});
     }
   }
 
   const isEditing = !!user;
   const isSelf = isEditing && user.id === currentUserId;
-
-  const availableRoles = disabledRoles.length
-    ? roleOptions.filter((o) => !disabledRoles.includes(o.value))
-    : roleOptions;
+  const guildRequired = role === 'WorkshopChief' || role === 'WorkshopForeman';
 
   const handleSubmit = () => {
     const errors: FieldErrors = {};
 
     if (!username.trim()) {
       errors.username = 'Укажите логин';
+    }
+
+    if (!fullName.trim()) {
+      errors.fullName = 'Укажите ФИО';
     }
 
     if (!isEditing && (!password || password.length < 4)) {
@@ -78,13 +94,23 @@ export function UserModal({
       errors.role = 'Выберите роль';
     }
 
+    if (guildRequired && !guildId) {
+      errors.guildId = 'Для этой роли необходимо указать цех';
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
 
     setFieldErrors({});
-    onSubmit({ username, password, role: role! });
+    onSubmit({
+      username: username.trim(),
+      password,
+      fullName: fullName.trim(),
+      role: role!,
+      guildId: guildRequired ? guildId! : null,
+    });
   };
 
   return (
@@ -111,6 +137,16 @@ export function UserModal({
         />
 
         <TextInput
+          id="user-fullName"
+          label="ФИО"
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Введите ФИО"
+          error={fieldErrors.fullName}
+        />
+
+        <TextInput
           id="user-password"
           label="Пароль"
           type="password"
@@ -126,8 +162,11 @@ export function UserModal({
           </label>
           <Select
             value={role}
-            onChange={setRole}
-            options={availableRoles}
+            onChange={(v) => {
+              setRole(v);
+              if (v === 'PlanningDept') setGuildId(null);
+            }}
+            options={roleOptions}
             placeholder="Выберите роль"
             className="w-full"
             disabled={isSelf}
@@ -135,6 +174,25 @@ export function UserModal({
           {fieldErrors.role && (
             <p className="ml-1.5 mt-1.5 text-sm text-error">
               {fieldErrors.role}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="ml-1.5 block text-sm font-medium text-gray-700 mb-1.5">
+            Цех
+          </label>
+          <Select<number>
+            value={guildId}
+            onChange={setGuildId}
+            options={guilds.map((g) => ({ value: g.id, label: g.name }))}
+            placeholder={guildRequired ? 'Выберите цех' : '—'}
+            className="w-full"
+            disabled={!guildRequired}
+          />
+          {fieldErrors.guildId && (
+            <p className="ml-1.5 mt-1.5 text-sm text-error">
+              {fieldErrors.guildId}
             </p>
           )}
         </div>

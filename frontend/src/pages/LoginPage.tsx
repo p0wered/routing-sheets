@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { toast, extractError } from '../utils/toast';
 import { Button } from '../components/Button';
 import { TextInput } from '../components/TextInput';
 
@@ -39,14 +40,12 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(username, password);
+      toast.success('Вход выполнен');
       navigate('/', { replace: true });
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setErrors({
-        form:
-          axiosError.response?.data?.message ||
-          'Ошибка при входе в систему',
-      });
+      const msg = extractError(err, 'Ошибка при входе в систему');
+      setErrors({ form: msg });
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

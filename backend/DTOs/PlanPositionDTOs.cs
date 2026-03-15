@@ -1,41 +1,34 @@
 namespace RoutingSheetsNew.DTOs;
 
 public record PlanPositionDto(
-    int Id, 
+    int Id,
     string DocumentNumber,
     DateTime DocumentDate,
-    string? PlanningPeriod,
-    string PositionCode, 
-    string Name, 
-    int ProductItemId, 
+    int PlanMonth,
+    int PlanYear,
+    string PositionCode,
+    string Name,
+    int ProductItemId,
     int QuantityPlanned,
+    int GuildId,
+    int StatusId,
+    string? GuildName,
+    string? StatusName,
     ProductItemDto? ProductItem);
 
 public record PlanPositionListDto(
-    int Id, 
+    int Id,
     string DocumentNumber,
     DateTime DocumentDate,
-    string? PlanningPeriod,
-    string PositionCode, 
-    string Name, 
-    int ProductItemId, 
-    int QuantityPlanned);
-
-public record CreatePlanPositionDto(
-    string DocumentNumber,
-    DateTime DocumentDate,
-    string? PlanningPeriod,
-    string PositionCode, 
-    string Name, 
-    int ProductItemId, 
-    int QuantityPlanned);
-
-public record UpdatePlanPositionDto(
-    string DocumentNumber,
-    DateTime DocumentDate,
-    string? PlanningPeriod,
-    string PositionCode, 
-    string Name, 
-    int ProductItemId, 
-    int QuantityPlanned);
+    int PlanMonth,
+    int PlanYear,
+    string PositionCode,
+    string Name,
+    int ProductItemId,
+    int QuantityPlanned,
+    int GuildId,
+    int StatusId,
+    string? GuildName,
+    string? StatusName,
+    string? ProductItemName);
 

@@ -18,5 +18,6 @@ public class OperationType
 
     // Navigation properties
     public virtual ICollection<Operation> Operations { get; set; } = new List<Operation>();
+    public virtual ICollection<PartOperation> PartOperations { get; set; } = new List<PartOperation>();
 }
 

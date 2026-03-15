@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLE_LABELS } from '../types/auth';
@@ -7,6 +7,7 @@ import { OP_STATUS_COLORS } from '../types/routingSheet';
 import { RoutingHeader } from '../components/Header';
 import { Select } from '../components/DropdownSelector';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { SplitQuantityModal } from '../components/SplitQuantityModal';
 import { Spinner } from '../components/Spinner';
 import { guildsApi, performersApi } from '../api/references';
 import {
@@ -14,7 +15,9 @@ import {
   changeOperationStatus,
   assignPerformer,
   getOperationStatuses,
+  splitOperation,
 } from '../api/operations';
+import { toast, extractError } from '../utils/toast';
 import { Button } from '../components/Button';
 import {
   Play,
@@ -22,15 +25,8 @@ import {
   Ban,
   Clock,
   UserPlus,
+  Scissors,
 } from 'lucide-react';
-
-function extractError(error: unknown, fallback: string): string {
-  const axiosError = error as { response?: { data?: string | { message?: string } } };
-  if (typeof axiosError.response?.data === 'string') return axiosError.response.data;
-  if (typeof axiosError.response?.data === 'object' && axiosError.response.data?.message)
-    return axiosError.response.data.message;
-  return fallback;
-}
 
 const OP_STATUS_TRANSITIONS: Record<number, number[]> = {
   1: [2, 4],
@@ -77,7 +73,14 @@ export default function OperationsByGuildPage() {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
 
+  const isGuildLocked = user?.role === 'WorkshopChief' || user?.role === 'WorkshopForeman';
   const [selectedGuildId, setSelectedGuildId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isGuildLocked && user?.guildId) {
+      setSelectedGuildId(user.guildId);
+    }
+  }, [isGuildLocked, user?.guildId]);
 
   const [opStatusChange, setOpStatusChange] = useState<{
     op: OperationListItem;
@@ -86,6 +89,9 @@ export default function OperationsByGuildPage() {
 
   const [assigningPerformerOp, setAssigningPerformerOp] = useState<OperationListItem | null>(null);
   const [selectedPerformerId, setSelectedPerformerId] = useState<number | null>(null);
+
+  const [splittingOp, setSplittingOp] = useState<OperationListItem | null>(null);
+  const [splitOpError, setSplitOpError] = useState<string | null>(null);
 
   const { data: guilds, isLoading: isGuildsLoading } = useQuery({
     queryKey: ['guilds'],
@@ -115,10 +121,11 @@ export default function OperationsByGuildPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
       setOpStatusChange(null);
+      toast.success('Статус операции изменён');
     },
     onError: (err: unknown) => {
       setOpStatusChange(null);
-      alert(extractError(err, 'Не удалось изменить статус операции'));
+      toast.error(extractError(err, 'Не удалось изменить статус операции'));
     },
   });
 
@@ -129,9 +136,25 @@ export default function OperationsByGuildPage() {
       queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
       setAssigningPerformerOp(null);
       setSelectedPerformerId(null);
+      toast.success('Исполнитель назначен');
     },
     onError: (err: unknown) => {
-      alert(extractError(err, 'Не удалось назначить исполнителя'));
+      toast.error(extractError(err, 'Не удалось назначить исполнителя'));
+    },
+  });
+
+  const splitOpMutation = useMutation({
+    mutationFn: ({ id, splitQuantity }: { id: number; splitQuantity: number }) =>
+      splitOperation(id, { splitQuantity }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
+      setSplittingOp(null);
+      setSplitOpError(null);
+      toast.success('Операция разбита');
+    },
+    onError: (err: unknown) => {
+      setSplitOpError(extractError(err, 'Не удалось разбить операцию'));
+      toast.error(extractError(err, 'Не удалось разбить операцию'));
     },
   });
 
@@ -159,7 +182,7 @@ export default function OperationsByGuildPage() {
     <div className="min-h-screen bg-gray-50">
       <RoutingHeader user={user} roleLabel={roleLabel} onLogout={logout} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="px-4 sm:px-6 lg:px-6 py-6">
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
           <div className="flex flex-wrap items-stretch gap-3">
             <Select<number>
@@ -169,6 +192,7 @@ export default function OperationsByGuildPage() {
               options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
               placeholder="Выберите цех"
               isLoading={isGuildsLoading}
+              disabled={isGuildLocked}
             />
           </div>
         </section>
@@ -296,6 +320,19 @@ export default function OperationsByGuildPage() {
                                     </button>
                                   );
                                 })}
+                              {op.quantity > 1 && (
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
+                                  onClick={() => {
+                                    setSplittingOp(op);
+                                    setSplitOpError(null);
+                                  }}
+                                  title="Разбить по количеству"
+                                >
+                                  <Scissors className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -332,6 +369,24 @@ export default function OperationsByGuildPage() {
             />
           );
         })()}
+
+      {/* Split operation modal */}
+      {splittingOp && (
+        <SplitQuantityModal
+          isOpen={!!splittingOp}
+          title="Разбить операцию по количеству"
+          currentQuantity={splittingOp.quantity}
+          isSubmitting={splitOpMutation.isPending}
+          error={splitOpError}
+          onClose={() => {
+            setSplittingOp(null);
+            setSplitOpError(null);
+          }}
+          onSubmit={(splitQuantity) => {
+            splitOpMutation.mutate({ id: splittingOp.id, splitQuantity });
+          }}
+        />
+      )}
 
       {/* Assign performer modal */}
       {assigningPerformerOp && (

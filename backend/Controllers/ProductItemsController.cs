@@ -16,28 +16,22 @@ public class ProductItemsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Получить список всех изделий
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProductItemDto>>> GetAll()
     {
         var items = await _context.ProductItems
-            .Select(p => new ProductItemDto(p.Id, p.Name, p.Description, p.QuantityPlanned))
+            .Select(p => new ProductItemDto(p.Id, p.Name, p.Description))
             .ToListAsync();
 
         return Ok(items);
     }
 
-    /// <summary>
-    /// Получить изделие по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<ProductItemDto>> GetById(int id)
     {
         var item = await _context.ProductItems
             .Where(p => p.Id == id)
-            .Select(p => new ProductItemDto(p.Id, p.Name, p.Description, p.QuantityPlanned))
+            .Select(p => new ProductItemDto(p.Id, p.Name, p.Description))
             .FirstOrDefaultAsync();
 
         if (item == null)
@@ -46,4 +40,3 @@ public class ProductItemsController : ControllerBase
         return Ok(item);
     }
 }
-

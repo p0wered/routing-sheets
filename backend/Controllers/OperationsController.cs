@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutingSheetsNew.Data;
@@ -8,6 +9,7 @@ namespace RoutingSheetsNew.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OperationsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -17,11 +19,6 @@ public class OperationsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Получить список операций с фильтрацией
-    /// </summary>
-    /// <param name="routingSheetId">Фильтр по маршрутному листу</param>
-    /// <param name="guildId">Фильтр по цеху</param>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<OperationListDto>>> GetAll(
         [FromQuery] int? routingSheetId = null,
@@ -67,9 +64,6 @@ public class OperationsController : ControllerBase
         return Ok(operations);
     }
 
-    /// <summary>
-    /// Получить операции по маршрутному листу
-    /// </summary>
     [HttpGet("by-routing-sheet/{routingSheetId}")]
     public async Task<ActionResult<IEnumerable<OperationListDto>>> GetByRoutingSheet(int routingSheetId)
     {
@@ -108,9 +102,6 @@ public class OperationsController : ControllerBase
         return Ok(operations);
     }
 
-    /// <summary>
-    /// Получить операции по цеху
-    /// </summary>
     [HttpGet("by-guild/{guildId}")]
     public async Task<ActionResult<IEnumerable<OperationListDto>>> GetByGuild(int guildId)
     {
@@ -150,9 +141,6 @@ public class OperationsController : ControllerBase
         return Ok(operations);
     }
 
-    /// <summary>
-    /// Получить операцию по ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<OperationDto>> GetById(int id)
     {
@@ -187,168 +175,14 @@ public class OperationsController : ControllerBase
         return Ok(operation);
     }
 
-    /// <summary>
-    /// Создать новую операцию в маршрутном листе
-    /// </summary>
-    [HttpPost]
-    public async Task<ActionResult<OperationDto>> Create([FromBody] CreateOperationDto dto)
-    {
-        // Validate routing sheet exists
-        var sheetExists = await _context.RoutingSheets.AnyAsync(rs => rs.Id == dto.RoutingSheetId);
-        if (!sheetExists)
-            return BadRequest("Маршрутный лист не найден");
-
-        // Validate references
-        if (dto.StatusId.HasValue)
-        {
-            var statusExists = await _context.OperationStatuses.AnyAsync(s => s.Id == dto.StatusId.Value);
-            if (!statusExists)
-                return BadRequest("Указанный статус операции не найден");
-        }
-
-        if (dto.GuildId.HasValue)
-        {
-            var guildExists = await _context.Guilds.AnyAsync(g => g.Id == dto.GuildId.Value);
-            if (!guildExists)
-                return BadRequest("Указанный цех не найден");
-        }
-
-        if (dto.OperationTypeId.HasValue)
-        {
-            var typeExists = await _context.OperationTypes.AnyAsync(t => t.Id == dto.OperationTypeId.Value);
-            if (!typeExists)
-                return BadRequest("Указанный тип операции не найден");
-        }
-
-        if (dto.PerformerId.HasValue)
-        {
-            var performerExists = await _context.Performers.AnyAsync(p => p.Id == dto.PerformerId.Value);
-            if (!performerExists)
-                return BadRequest("Указанный исполнитель не найден");
-        }
-
-        var operation = new Operation
-        {
-            RoutingSheetId = dto.RoutingSheetId,
-            SeqNumber = dto.SeqNumber,
-            Code = dto.Code,
-            Name = dto.Name,
-            StatusId = dto.StatusId ?? 1, // Default to PENDING
-            GuildId = dto.GuildId,
-            OperationTypeId = dto.OperationTypeId,
-            PerformerId = dto.PerformerId,
-            Price = dto.Price,
-            Sum = dto.Sum,
-            Quantity = dto.Quantity
-        };
-
-        _context.Operations.Add(operation);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { id = operation.Id },
-            new OperationDto(operation.Id, operation.RoutingSheetId, operation.SeqNumber, operation.Code, operation.Name,
-                operation.StatusId, operation.GuildId, operation.OperationTypeId, operation.PerformerId,
-                operation.Price, operation.Sum, operation.Quantity, null, null, null, null));
-    }
-
-    /// <summary>
-    /// Обновить операцию
-    /// </summary>
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateOperationDto dto)
-    {
-        var operation = await _context.Operations.FindAsync(id);
-        if (operation == null)
-            return NotFound();
-
-        // Validate references
-        if (dto.StatusId.HasValue)
-        {
-            var statusExists = await _context.OperationStatuses.AnyAsync(s => s.Id == dto.StatusId.Value);
-            if (!statusExists)
-                return BadRequest("Указанный статус операции не найден");
-        }
-
-        if (dto.GuildId.HasValue)
-        {
-            var guildExists = await _context.Guilds.AnyAsync(g => g.Id == dto.GuildId.Value);
-            if (!guildExists)
-                return BadRequest("Указанный цех не найден");
-        }
-
-        if (dto.OperationTypeId.HasValue)
-        {
-            var typeExists = await _context.OperationTypes.AnyAsync(t => t.Id == dto.OperationTypeId.Value);
-            if (!typeExists)
-                return BadRequest("Указанный тип операции не найден");
-        }
-
-        if (dto.PerformerId.HasValue)
-        {
-            var performerExists = await _context.Performers.AnyAsync(p => p.Id == dto.PerformerId.Value);
-            if (!performerExists)
-                return BadRequest("Указанный исполнитель не найден");
-        }
-
-        operation.SeqNumber = dto.SeqNumber;
-        operation.Code = dto.Code;
-        operation.Name = dto.Name;
-        operation.StatusId = dto.StatusId;
-        operation.GuildId = dto.GuildId;
-        operation.OperationTypeId = dto.OperationTypeId;
-        operation.PerformerId = dto.PerformerId;
-        operation.Price = dto.Price;
-        operation.Sum = dto.Sum;
-        operation.Quantity = dto.Quantity;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Удалить операцию
-    /// </summary>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var operation = await _context.Operations.FindAsync(id);
-        if (operation == null)
-            return NotFound();
-
-        var routingSheetId = operation.RoutingSheetId;
-
-        _context.Operations.Remove(operation);
-        await _context.SaveChangesAsync();
-
-        // Renumber remaining operations
-        var remainingOperations = await _context.Operations
-            .Where(o => o.RoutingSheetId == routingSheetId)
-            .OrderBy(o => o.SeqNumber)
-            .ToListAsync();
-
-        int seqNumber = 1;
-        foreach (var op in remainingOperations)
-        {
-            op.SeqNumber = seqNumber++;
-        }
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Назначить исполнителя на операцию
-    /// </summary>
     [HttpPatch("{id}/assign-performer")]
+    [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.WorkshopForeman}")]
     public async Task<IActionResult> AssignPerformer(int id, [FromBody] AssignPerformerDto dto)
     {
         var operation = await _context.Operations.FindAsync(id);
         if (operation == null)
             return NotFound();
 
-        // Validate performer exists
         var performerExists = await _context.Performers.AnyAsync(p => p.Id == dto.PerformerId);
         if (!performerExists)
             return BadRequest("Указанный исполнитель не найден");
@@ -359,9 +193,6 @@ public class OperationsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Снять исполнителя с операции
-    /// </summary>
     [HttpDelete("{id}/performer")]
     public async Task<IActionResult> RemovePerformer(int id)
     {
@@ -375,17 +206,14 @@ public class OperationsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Изменить статус операции
-    /// </summary>
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.WorkshopForeman}")]
     public async Task<IActionResult> ChangeStatus(int id, [FromBody] ChangeStatusDto dto)
     {
         var operation = await _context.Operations.FindAsync(id);
         if (operation == null)
             return NotFound();
 
-        // Validate status exists
         var statusExists = await _context.OperationStatuses.AnyAsync(s => s.Id == dto.StatusId);
         if (!statusExists)
             return BadRequest("Указанный статус не найден");
@@ -395,5 +223,52 @@ public class OperationsController : ControllerBase
 
         return NoContent();
     }
-}
 
+    [HttpPost("{id}/split")]
+    public async Task<ActionResult<object>> SplitOperation(int id, [FromBody] SplitOperationDto dto)
+    {
+        var operation = await _context.Operations.FindAsync(id);
+        if (operation == null)
+            return NotFound("Операция не найдена");
+
+        if (dto.SplitQuantity <= 0)
+            return BadRequest("Количество для отделения должно быть больше 0");
+
+        if (dto.SplitQuantity >= operation.Quantity)
+            return BadRequest("Количество для отделения должно быть меньше текущего количества операции");
+
+        // Find max seq number in the same routing sheet
+        var maxSeq = await _context.Operations
+            .Where(o => o.RoutingSheetId == operation.RoutingSheetId)
+            .MaxAsync(o => o.SeqNumber);
+
+        var newQuantity = dto.SplitQuantity;
+        var remainingQuantity = operation.Quantity - newQuantity;
+
+        // Create new operation
+        var newOperation = new Operation
+        {
+            RoutingSheetId = operation.RoutingSheetId,
+            SeqNumber = maxSeq + 1,
+            Name = operation.Name,
+            Code = operation.Code,
+            OperationTypeId = operation.OperationTypeId,
+            GuildId = operation.GuildId,
+            PerformerId = null,
+            Price = operation.Price,
+            Quantity = newQuantity,
+            Sum = operation.Price.HasValue ? operation.Price.Value * newQuantity : null,
+            StatusId = operation.StatusId
+        };
+
+        _context.Operations.Add(newOperation);
+
+        // Update original
+        operation.Quantity = remainingQuantity;
+        operation.Sum = operation.Price.HasValue ? operation.Price.Value * remainingQuantity : null;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { OriginalId = operation.Id, NewId = newOperation.Id });
+    }
+}

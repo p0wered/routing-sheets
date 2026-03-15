@@ -31,27 +31,8 @@ public record RoutingSheetListDto(
     string? ProductItemName,
     string? UnitName);
 
-public record CreateRoutingSheetDto(
-    string Number,
-    string Name,
-    int? PlanPositionId,
-    int? ProductItemId,
-    int? UnitId,
-    int Quantity);
-
-public record UpdateRoutingSheetDto(
-    string Number,
-    string Name,
-    int? PlanPositionId,
-    int? ProductItemId,
-    int? UnitId,
-    int Quantity);
 
 public record ChangeStatusDto(int StatusId);
 
-public record SplitRoutingSheetDto(
-    List<int> OperationIds,
-    string NewNumber,
-    string NewName,
-    int NewQuantity);
+public record SplitQuantityDto(int SplitQuantity);
 

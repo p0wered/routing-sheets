@@ -1,36 +1,25 @@
 import apiClient from './client';
+import type { PlanPositionListItem, PlanStatus } from '../types/plan';
 
-export interface PlanPositionListItem {
-  id: number;
-  documentNumber: string;
-  documentDate: string; // ISO date from backend
-  planningPeriod: string | null;
-  positionCode: string;
-  name: string;
-  productItemId: number;
-  quantityPlanned: number;
-}
-
-export interface CreatePlanPositionRequest {
-  documentNumber: string;
-  documentDate: string; // ISO (YYYY-MM-DD)
-  planningPeriod?: string | null;
-  positionCode: string;
-  name: string;
-  productItemId: number;
-  quantityPlanned: number;
-}
-
-export async function getPlanPositions() {
-  const response = await apiClient.get<PlanPositionListItem[]>('/PlanPositions');
+export async function getPlanPositions(params?: {
+  guildId?: number;
+  month?: number;
+  year?: number;
+}) {
+  const response = await apiClient.get<PlanPositionListItem[]>('/PlanPositions', { params });
   return response.data;
 }
 
-export async function createPlanPosition(payload: CreatePlanPositionRequest) {
-  const response = await apiClient.post<PlanPositionListItem>(
-    '/PlanPositions',
-    payload
-  );
+export async function getPlanPositionById(id: number) {
+  const response = await apiClient.get<PlanPositionListItem>(`/PlanPositions/${id}`);
   return response.data;
 }
 
+export async function changePlanPositionStatus(id: number, statusId: number) {
+  await apiClient.patch(`/PlanPositions/${id}/status`, { statusId });
+}
+
+export async function getPlanStatuses() {
+  const response = await apiClient.get<PlanStatus[]>('/PlanStatuses');
+  return response.data;
+}

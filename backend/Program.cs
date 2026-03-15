@@ -112,13 +112,40 @@ using (var scope = app.Services.CreateScope())
 
     if (!dbContext.Users.Any())
     {
-        dbContext.Users.Add(new User
-        {
-            Username = "chief",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("chief123"),
-            FullName = "Иванов Иван Петрович",
-            Role = UserRoles.WorkshopChief
-        });
+        dbContext.Users.AddRange(
+            new User
+            {
+                Username = "chief1",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("chief123"),
+                FullName = "Иванов Иван Петрович",
+                Role = UserRoles.WorkshopChief,
+                GuildId = 1
+            },
+            new User
+            {
+                Username = "chief2",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("chief123"),
+                FullName = "Козлов Андрей Сергеевич",
+                Role = UserRoles.WorkshopChief,
+                GuildId = 2
+            },
+            new User
+            {
+                Username = "foreman1",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("foreman123"),
+                FullName = "Сидоров Алексей Николаевич",
+                Role = UserRoles.WorkshopForeman,
+                GuildId = 1
+            },
+            new User
+            {
+                Username = "planner",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("planner123"),
+                FullName = "Петрова Мария Ивановна",
+                Role = UserRoles.PlanningDept,
+                GuildId = null
+            }
+        );
         dbContext.SaveChanges();
     }
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLE_LABELS } from '../types/auth';
 import type { NamedReference, Performer, ReferenceTab } from '../types/references';
@@ -9,13 +8,14 @@ import { RoutingHeader } from '../components/Header';
 import { Button } from '../components/Button';
 import { ReferenceModal } from '../components/ReferenceModal';
 import { Spinner } from '../components/Spinner';
-import { Pencil, Trash2, ChevronLeft, Plus, X } from 'lucide-react';
+import { Pencil, Trash2, Plus, X } from 'lucide-react';
 import {
   unitsApi,
   guildsApi,
   operationTypesApi,
   performersApi,
 } from '../api/references';
+import { toast, extractError } from '../utils/toast';
 
 const TABS: ReferenceTab[] = ['units', 'guilds', 'operationTypes', 'performers'];
 
@@ -74,17 +74,8 @@ function cellValue(tab: ReferenceTab, item: NamedReference | Performer, colKey: 
   return (item as NamedReference).name;
 }
 
-function extractError(error: unknown, fallback: string): string {
-  const axiosError = error as { response?: { data?: string | { message?: string } } };
-  if (typeof axiosError.response?.data === 'string') return axiosError.response.data;
-  if (typeof axiosError.response?.data === 'object' && axiosError.response.data?.message)
-    return axiosError.response.data.message;
-  return fallback;
-}
-
 export default function ReferencesPage() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<ReferenceTab>('units');
@@ -95,16 +86,16 @@ export default function ReferencesPage() {
 
   const isPerformers = activeTab === 'performers';
 
-  const namedQuery = useQuery({
+  const namedQuery = useQuery<(NamedReference | Performer)[]>({
     queryKey: ['references', activeTab],
-    queryFn: () => {
+    queryFn: async () => {
       if (isPerformers) return performersApi.getAll();
       return namedApis[activeTab as NamedTab].getAll();
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (values: Record<string, string>) => {
+  const createMutation = useMutation<NamedReference | Performer, Error, Record<string, string>>({
+    mutationFn: async (values: Record<string, string>) => {
       if (isPerformers)
         return performersApi.create({ fullName: values.fullName, role: values.role || null });
       return namedApis[activeTab as NamedTab].create({ name: values.name });
@@ -112,8 +103,13 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       closeModal();
+      toast.success('Запись создана');
     },
-    onError: (err: unknown) => setModalError(extractError(err, 'Не удалось создать запись')),
+    onError: (err: unknown) => {
+      const msg = extractError(err, 'Не удалось создать запись');
+      setModalError(msg);
+      toast.error(msg);
+    },
   });
 
   const updateMutation = useMutation({
@@ -125,8 +121,13 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       closeModal();
+      toast.success('Запись обновлена');
     },
-    onError: (err: unknown) => setModalError(extractError(err, 'Не удалось обновить запись')),
+    onError: (err: unknown) => {
+      const msg = extractError(err, 'Не удалось обновить запись');
+      setModalError(msg);
+      toast.error(msg);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -137,10 +138,11 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       setDeletingId(null);
+      toast.success('Запись удалена');
     },
     onError: (err: unknown) => {
       setDeletingId(null);
-      alert(extractError(err, 'Не удалось удалить запись'));
+      toast.error(extractError(err, 'Не удалось удалить запись'));
     },
   });
 
@@ -188,17 +190,13 @@ export default function ReferencesPage() {
     <div className="min-h-screen bg-gray-50">
       <RoutingHeader user={user} roleLabel={roleLabel} onLogout={logout} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Toolbar */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
           <div className="flex items-center justify-between">
-            <div
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1 hover:text-primary transition cursor-pointer"
-            >
-              <ChevronLeft className="w-5 h-5" strokeWidth={1.5} />
-              <p className="text-base">На главную</p>
-            </div>
+            <p className="pl-3 text-base font-bold">
+              Управление справочниками
+            </p>
             <Button type="button" size="small" color="primary" onClick={openCreate} icon={<Plus />}>
               Добавить
             </Button>

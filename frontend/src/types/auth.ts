@@ -3,6 +3,8 @@ export interface User {
   username: string;
   fullName: string;
   role: string;
+  guildId: number | null;
+  guildName: string | null;
 }
 
 export interface LoginRequest {

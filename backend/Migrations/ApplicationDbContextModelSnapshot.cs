@@ -120,96 +120,6 @@ namespace RoutingSheetsNew.Migrations
                     b.HasIndex("RoutingSheetId", "SeqNumber");
 
                     b.ToTable("Operations");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "ОП-001",
-                            GuildId = 2,
-                            Name = "Заготовительная операция",
-                            OperationTypeId = 3,
-                            PerformerId = 3,
-                            Price = 150.00m,
-                            Quantity = 10,
-                            RoutingSheetId = 1,
-                            SeqNumber = 1,
-                            StatusId = 3,
-                            Sum = 1500.00m
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "ОП-002",
-                            GuildId = 2,
-                            Name = "Фрезерование пазов",
-                            OperationTypeId = 4,
-                            PerformerId = 3,
-                            Price = 250.00m,
-                            Quantity = 10,
-                            RoutingSheetId = 1,
-                            SeqNumber = 2,
-                            StatusId = 2,
-                            Sum = 2500.00m
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "ОП-003",
-                            GuildId = 1,
-                            Name = "Сборка узла",
-                            OperationTypeId = 1,
-                            PerformerId = 1,
-                            Price = 200.00m,
-                            Quantity = 10,
-                            RoutingSheetId = 1,
-                            SeqNumber = 3,
-                            StatusId = 1,
-                            Sum = 2000.00m
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "ОП-004",
-                            GuildId = 1,
-                            Name = "Контроль ОТК",
-                            OperationTypeId = 5,
-                            Price = 50.00m,
-                            Quantity = 10,
-                            RoutingSheetId = 1,
-                            SeqNumber = 4,
-                            StatusId = 1,
-                            Sum = 500.00m
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "ОП-001",
-                            GuildId = 2,
-                            Name = "Токарная обработка",
-                            OperationTypeId = 3,
-                            Price = 300.00m,
-                            Quantity = 5,
-                            RoutingSheetId = 2,
-                            SeqNumber = 1,
-                            StatusId = 1,
-                            Sum = 1500.00m
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Code = "ОП-002",
-                            GuildId = 3,
-                            Name = "Сварка фланца",
-                            OperationTypeId = 2,
-                            PerformerId = 2,
-                            Price = 180.00m,
-                            Quantity = 5,
-                            RoutingSheetId = 2,
-                            SeqNumber = 2,
-                            StatusId = 1,
-                            Sum = 900.00m
-                        });
                 });
 
             modelBuilder.Entity("RoutingSheetsNew.Models.OperationStatus", b =>
@@ -306,6 +216,214 @@ namespace RoutingSheetsNew.Migrations
                         });
                 });
 
+            modelBuilder.Entity("RoutingSheetsNew.Models.Part", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Parts");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Основной корпус изделия",
+                            Name = "Корпус"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Крышка корпуса",
+                            Name = "Крышка"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Приводной вал",
+                            Name = "Вал"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Ведущая шестерня",
+                            Name = "Шестерня"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Опорный подшипник",
+                            Name = "Подшипник"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Крепёжный болт М6",
+                            Name = "Болт М6"
+                        });
+                });
+
+            modelBuilder.Entity("RoutingSheetsNew.Models.PartOperation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("GuildId")
+                        .HasColumnType("int")
+                        .HasColumnName("guild_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int?>("OperationTypeId")
+                        .HasColumnType("int")
+                        .HasColumnName("operation_type_id");
+
+                    b.Property<int>("PartId")
+                        .HasColumnType("int")
+                        .HasColumnName("part_id");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("SeqNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("seq_number");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildId");
+
+                    b.HasIndex("OperationTypeId");
+
+                    b.HasIndex("PartId", "SeqNumber");
+
+                    b.ToTable("PartOperations");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "ПО-001",
+                            GuildId = 2,
+                            Name = "Фрезеровка корпуса",
+                            OperationTypeId = 4,
+                            PartId = 1,
+                            Price = 300.00m,
+                            SeqNumber = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "ПО-002",
+                            GuildId = 2,
+                            Name = "Контроль корпуса",
+                            OperationTypeId = 5,
+                            PartId = 1,
+                            Price = 50.00m,
+                            SeqNumber = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "ПО-003",
+                            GuildId = 1,
+                            Name = "Штамповка заготовки крышки",
+                            OperationTypeId = 1,
+                            PartId = 2,
+                            Price = 30.00m,
+                            SeqNumber = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "ПО-004",
+                            GuildId = 2,
+                            Name = "Шлифовка крышки",
+                            OperationTypeId = 4,
+                            PartId = 2,
+                            Price = 20.00m,
+                            SeqNumber = 2
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Code = "ПО-005",
+                            GuildId = 2,
+                            Name = "Токарная обработка вала",
+                            OperationTypeId = 3,
+                            PartId = 3,
+                            Price = 250.00m,
+                            SeqNumber = 1
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Code = "ПО-006",
+                            GuildId = 2,
+                            Name = "Фрезеровка шестерни",
+                            OperationTypeId = 4,
+                            PartId = 4,
+                            Price = 180.00m,
+                            SeqNumber = 1
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "ПО-007",
+                            GuildId = 3,
+                            Name = "Термообработка шестерни",
+                            OperationTypeId = 2,
+                            PartId = 4,
+                            Price = 100.00m,
+                            SeqNumber = 2
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Code = "ПО-008",
+                            GuildId = 1,
+                            Name = "Контроль подшипника",
+                            OperationTypeId = 5,
+                            PartId = 5,
+                            Price = 20.00m,
+                            SeqNumber = 1
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Code = "ПО-009",
+                            GuildId = 2,
+                            Name = "Токарная обработка болта",
+                            OperationTypeId = 3,
+                            PartId = 6,
+                            Price = 10.00m,
+                            SeqNumber = 1
+                        });
+                });
+
             modelBuilder.Entity("RoutingSheetsNew.Models.Performer", b =>
                 {
                     b.Property<int>("Id")
@@ -367,15 +485,22 @@ namespace RoutingSheetsNew.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("document_number");
 
+                    b.Property<int>("GuildId")
+                        .HasColumnType("int")
+                        .HasColumnName("guild_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("PlanningPeriod")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
-                        .HasColumnName("planning_period");
+                    b.Property<int>("PlanMonth")
+                        .HasColumnType("int")
+                        .HasColumnName("plan_month");
+
+                    b.Property<int>("PlanYear")
+                        .HasColumnType("int")
+                        .HasColumnName("plan_year");
 
                     b.Property<string>("PositionCode")
                         .IsRequired()
@@ -391,11 +516,19 @@ namespace RoutingSheetsNew.Migrations
                         .HasColumnType("int")
                         .HasColumnName("quantity_planned");
 
+                    b.Property<int>("StatusId")
+                        .HasColumnType("int")
+                        .HasColumnName("status_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PositionCode");
 
                     b.HasIndex("ProductItemId");
+
+                    b.HasIndex("StatusId");
+
+                    b.HasIndex("GuildId", "PlanYear", "PlanMonth");
 
                     b.ToTable("PlanPositions");
 
@@ -403,35 +536,137 @@ namespace RoutingSheetsNew.Migrations
                         new
                         {
                             Id = 1,
-                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DocumentNumber = "ПП-2024-001",
-                            Name = "Производство корпусов Q1",
-                            PlanningPeriod = "1 квартал 2024",
-                            PositionCode = "ПП-2024-001",
+                            DocumentDate = new DateTime(2026, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-001",
+                            GuildId = 1,
+                            Name = "Производство корпусов, январь",
+                            PlanMonth = 1,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-001",
                             ProductItemId = 1,
-                            QuantityPlanned = 25
+                            QuantityPlanned = 25,
+                            StatusId = 1
                         },
                         new
                         {
                             Id = 2,
-                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DocumentNumber = "ПП-2024-002",
-                            Name = "Производство валов Q1",
-                            PlanningPeriod = "1 квартал 2024",
-                            PositionCode = "ПП-2024-002",
+                            DocumentDate = new DateTime(2026, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-002",
+                            GuildId = 2,
+                            Name = "Производство валов, январь",
+                            PlanMonth = 1,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-002",
                             ProductItemId = 2,
-                            QuantityPlanned = 15
+                            QuantityPlanned = 15,
+                            StatusId = 1
                         },
                         new
                         {
                             Id = 3,
-                            DocumentDate = new DateTime(2024, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            DocumentNumber = "ПП-2024-003",
-                            Name = "Производство шестерен Q1",
-                            PlanningPeriod = "1 квартал 2024",
-                            PositionCode = "ПП-2024-003",
+                            DocumentDate = new DateTime(2026, 1, 10, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-003",
+                            GuildId = 2,
+                            Name = "Производство шестерен, январь",
+                            PlanMonth = 1,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-003",
                             ProductItemId = 3,
-                            QuantityPlanned = 50
+                            QuantityPlanned = 50,
+                            StatusId = 1
+                        },
+                        new
+                        {
+                            Id = 4,
+                            DocumentDate = new DateTime(2026, 2, 5, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-004",
+                            GuildId = 1,
+                            Name = "Производство корпусов, февраль",
+                            PlanMonth = 2,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-004",
+                            ProductItemId = 1,
+                            QuantityPlanned = 30,
+                            StatusId = 1
+                        },
+                        new
+                        {
+                            Id = 5,
+                            DocumentDate = new DateTime(2026, 2, 5, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-005",
+                            GuildId = 2,
+                            Name = "Производство валов, февраль",
+                            PlanMonth = 2,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-005",
+                            ProductItemId = 2,
+                            QuantityPlanned = 20,
+                            StatusId = 1
+                        },
+                        new
+                        {
+                            Id = 6,
+                            DocumentDate = new DateTime(2026, 2, 5, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-006",
+                            GuildId = 2,
+                            Name = "Производство шестерен, февраль",
+                            PlanMonth = 2,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-006",
+                            ProductItemId = 3,
+                            QuantityPlanned = 40,
+                            StatusId = 1
+                        },
+                        new
+                        {
+                            Id = 7,
+                            DocumentDate = new DateTime(2026, 2, 5, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            DocumentNumber = "ПП-2026-007",
+                            GuildId = 1,
+                            Name = "Производство корпусов (доп.), февраль",
+                            PlanMonth = 2,
+                            PlanYear = 2026,
+                            PositionCode = "ПП-2026-007",
+                            ProductItemId = 1,
+                            QuantityPlanned = 10,
+                            StatusId = 1
+                        });
+                });
+
+            modelBuilder.Entity("RoutingSheetsNew.Models.PlanStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PlanStatuses");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "OPEN",
+                            Name = "Открыт"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "CLOSED",
+                            Name = "Закрыт"
                         });
                 });
 
@@ -452,10 +687,6 @@ namespace RoutingSheetsNew.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<int>("QuantityPlanned")
-                        .HasColumnType("int")
-                        .HasColumnName("quantity_planned");
-
                     b.HasKey("Id");
 
                     b.ToTable("ProductItems");
@@ -465,22 +696,92 @@ namespace RoutingSheetsNew.Migrations
                         {
                             Id = 1,
                             Description = "Корпус для промышленного редуктора РМ-500",
-                            Name = "Корпус редуктора",
-                            QuantityPlanned = 100
+                            Name = "Корпус редуктора"
                         },
                         new
                         {
                             Id = 2,
                             Description = "Приводной вал для станка",
-                            Name = "Вал приводной",
-                            QuantityPlanned = 50
+                            Name = "Вал приводной"
                         },
                         new
                         {
                             Id = 3,
                             Description = "Ведущая шестерня z=24",
-                            Name = "Шестерня ведущая",
-                            QuantityPlanned = 200
+                            Name = "Шестерня ведущая"
+                        });
+                });
+
+            modelBuilder.Entity("RoutingSheetsNew.Models.ProductPart", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PartId")
+                        .HasColumnType("int")
+                        .HasColumnName("part_id");
+
+                    b.Property<int>("ProductItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("product_item_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PartId");
+
+                    b.HasIndex("ProductItemId", "PartId")
+                        .IsUnique();
+
+                    b.ToTable("ProductParts");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            PartId = 1,
+                            ProductItemId = 1,
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            PartId = 2,
+                            ProductItemId = 1,
+                            Quantity = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            PartId = 6,
+                            ProductItemId = 1,
+                            Quantity = 8
+                        },
+                        new
+                        {
+                            Id = 4,
+                            PartId = 3,
+                            ProductItemId = 2,
+                            Quantity = 1
+                        },
+                        new
+                        {
+                            Id = 5,
+                            PartId = 5,
+                            ProductItemId = 2,
+                            Quantity = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            PartId = 4,
+                            ProductItemId = 3,
+                            Quantity = 1
                         });
                 });
 
@@ -541,32 +842,6 @@ namespace RoutingSheetsNew.Migrations
                     b.HasIndex("UnitId");
 
                     b.ToTable("RoutingSheets");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2024, 1, 15, 10, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Маршрутный лист на корпус редуктора",
-                            Number = "МЛ-2024-0001",
-                            PlanPositionId = 1,
-                            ProductItemId = 1,
-                            Quantity = 10,
-                            StatusId = 2,
-                            UnitId = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CreatedAt = new DateTime(2024, 1, 20, 14, 30, 0, 0, DateTimeKind.Utc),
-                            Name = "Маршрутный лист на вал приводной",
-                            Number = "МЛ-2024-0002",
-                            PlanPositionId = 2,
-                            ProductItemId = 2,
-                            Quantity = 5,
-                            StatusId = 1,
-                            UnitId = 1
-                        });
                 });
 
             modelBuilder.Entity("RoutingSheetsNew.Models.RoutingSheetStatus", b =>
@@ -666,6 +941,10 @@ namespace RoutingSheetsNew.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<int?>("GuildId")
+                        .HasColumnType("int")
+                        .HasColumnName("guild_id");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -681,6 +960,8 @@ namespace RoutingSheetsNew.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GuildId");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -727,13 +1008,73 @@ namespace RoutingSheetsNew.Migrations
                     b.Navigation("Status");
                 });
 
+            modelBuilder.Entity("RoutingSheetsNew.Models.PartOperation", b =>
+                {
+                    b.HasOne("RoutingSheetsNew.Models.Guild", "Guild")
+                        .WithMany("PartOperations")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RoutingSheetsNew.Models.OperationType", "OperationType")
+                        .WithMany("PartOperations")
+                        .HasForeignKey("OperationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RoutingSheetsNew.Models.Part", "Part")
+                        .WithMany("PartOperations")
+                        .HasForeignKey("PartId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Guild");
+
+                    b.Navigation("OperationType");
+
+                    b.Navigation("Part");
+                });
+
             modelBuilder.Entity("RoutingSheetsNew.Models.PlanPosition", b =>
                 {
+                    b.HasOne("RoutingSheetsNew.Models.Guild", "Guild")
+                        .WithMany("PlanPositions")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RoutingSheetsNew.Models.ProductItem", "ProductItem")
                         .WithMany("PlanPositions")
                         .HasForeignKey("ProductItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RoutingSheetsNew.Models.PlanStatus", "Status")
+                        .WithMany("PlanPositions")
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Guild");
+
+                    b.Navigation("ProductItem");
+
+                    b.Navigation("Status");
+                });
+
+            modelBuilder.Entity("RoutingSheetsNew.Models.ProductPart", b =>
+                {
+                    b.HasOne("RoutingSheetsNew.Models.Part", "Part")
+                        .WithMany("ProductParts")
+                        .HasForeignKey("PartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RoutingSheetsNew.Models.ProductItem", "ProductItem")
+                        .WithMany("ProductParts")
+                        .HasForeignKey("ProductItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Part");
 
                     b.Navigation("ProductItem");
                 });
@@ -770,9 +1111,25 @@ namespace RoutingSheetsNew.Migrations
                     b.Navigation("Unit");
                 });
 
+            modelBuilder.Entity("RoutingSheetsNew.Models.User", b =>
+                {
+                    b.HasOne("RoutingSheetsNew.Models.Guild", "Guild")
+                        .WithMany("Users")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Guild");
+                });
+
             modelBuilder.Entity("RoutingSheetsNew.Models.Guild", b =>
                 {
                     b.Navigation("Operations");
+
+                    b.Navigation("PartOperations");
+
+                    b.Navigation("PlanPositions");
+
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("RoutingSheetsNew.Models.OperationStatus", b =>
@@ -783,6 +1140,15 @@ namespace RoutingSheetsNew.Migrations
             modelBuilder.Entity("RoutingSheetsNew.Models.OperationType", b =>
                 {
                     b.Navigation("Operations");
+
+                    b.Navigation("PartOperations");
+                });
+
+            modelBuilder.Entity("RoutingSheetsNew.Models.Part", b =>
+                {
+                    b.Navigation("PartOperations");
+
+                    b.Navigation("ProductParts");
                 });
 
             modelBuilder.Entity("RoutingSheetsNew.Models.Performer", b =>
@@ -795,9 +1161,16 @@ namespace RoutingSheetsNew.Migrations
                     b.Navigation("RoutingSheets");
                 });
 
+            modelBuilder.Entity("RoutingSheetsNew.Models.PlanStatus", b =>
+                {
+                    b.Navigation("PlanPositions");
+                });
+
             modelBuilder.Entity("RoutingSheetsNew.Models.ProductItem", b =>
                 {
                     b.Navigation("PlanPositions");
+
+                    b.Navigation("ProductParts");
 
                     b.Navigation("RoutingSheets");
                 });

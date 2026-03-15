@@ -27,6 +27,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         var user = await _context.Users
+            .Include(u => u.Guild)
             .FirstOrDefaultAsync(u => u.Username == dto.Username);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
@@ -42,7 +43,9 @@ public class AuthController : ControllerBase
                 Id = user.Id,
                 Username = user.Username,
                 FullName = user.FullName,
-                Role = user.Role
+                Role = user.Role,
+                GuildId = user.GuildId,
+                GuildName = user.Guild?.Name
             }
         });
     }
@@ -55,7 +58,9 @@ public class AuthController : ControllerBase
         if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
             return Unauthorized();
 
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.Users
+            .Include(u => u.Guild)
+            .FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return NotFound();
 
@@ -64,7 +69,9 @@ public class AuthController : ControllerBase
             Id = user.Id,
             Username = user.Username,
             FullName = user.FullName,
-            Role = user.Role
+            Role = user.Role,
+            GuildId = user.GuildId,
+            GuildName = user.Guild?.Name
         });
     }
 
@@ -74,13 +81,16 @@ public class AuthController : ControllerBase
             Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.GivenName, user.FullName),
-            new Claim(ClaimTypes.Role, user.Role)
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.GivenName, user.FullName),
+            new(ClaimTypes.Role, user.Role)
         };
+
+        if (user.GuildId.HasValue)
+            claims.Add(new Claim("GuildId", user.GuildId.Value.ToString()));
 
         var expireMinutes = int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "480");
 

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoutingSheetsNew.Data;
@@ -8,6 +10,7 @@ namespace RoutingSheetsNew.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RoutingSheetsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -17,15 +20,11 @@ public class RoutingSheetsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Получить список маршрутных листов с фильтрацией
-    /// </summary>
-    /// <param name="planPositionId">Фильтр по позиции плана</param>
-    /// <param name="productItemId">Фильтр по изделию (проекту)</param>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<RoutingSheetListDto>>> GetAll(
         [FromQuery] int? planPositionId = null,
-        [FromQuery] int? productItemId = null)
+        [FromQuery] int? productItemId = null,
+        [FromQuery] int? guildId = null)
     {
         var query = _context.RoutingSheets
             .Include(rs => rs.Status)
@@ -33,6 +32,19 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.ProductItem)
             .Include(rs => rs.Unit)
             .AsQueryable();
+
+        // Auto-filter by guild for WorkshopChief/WorkshopForeman
+        var userGuildId = GetCurrentUserGuildId();
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        if (userRole is UserRoles.WorkshopChief or UserRoles.WorkshopForeman && userGuildId.HasValue)
+        {
+            query = query.Where(rs => rs.PlanPosition != null && rs.PlanPosition.GuildId == userGuildId.Value);
+        }
+        else if (guildId.HasValue)
+        {
+            query = query.Where(rs => rs.PlanPosition != null && rs.PlanPosition.GuildId == guildId.Value);
+        }
 
         if (planPositionId.HasValue)
             query = query.Where(rs => rs.PlanPositionId == planPositionId.Value);
@@ -59,25 +71,20 @@ public class RoutingSheetsController : ControllerBase
         return Ok(sheets);
     }
 
-    /// <summary>
-    /// Получить маршрутный лист по ID с операциями
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<RoutingSheetDto>> GetById(int id)
     {
         var sheet = await _context.RoutingSheets
             .Include(rs => rs.Status)
-            .Include(rs => rs.PlanPosition)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Guild)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Status)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
             .Include(rs => rs.ProductItem)
             .Include(rs => rs.Unit)
-            .Include(rs => rs.Operations)
-                .ThenInclude(o => o.Status)
-            .Include(rs => rs.Operations)
-                .ThenInclude(o => o.Guild)
-            .Include(rs => rs.Operations)
-                .ThenInclude(o => o.OperationType)
-            .Include(rs => rs.Operations)
-                .ThenInclude(o => o.Performer)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Status)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Guild)
+            .Include(rs => rs.Operations).ThenInclude(o => o.OperationType)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Performer)
             .Where(rs => rs.Id == id)
             .FirstOrDefaultAsync();
 
@@ -100,14 +107,20 @@ public class RoutingSheetsController : ControllerBase
                     sheet.PlanPosition.Id,
                     sheet.PlanPosition.DocumentNumber,
                     sheet.PlanPosition.DocumentDate,
-                    sheet.PlanPosition.PlanningPeriod,
+                    sheet.PlanPosition.PlanMonth,
+                    sheet.PlanPosition.PlanYear,
                     sheet.PlanPosition.PositionCode,
                     sheet.PlanPosition.Name,
                     sheet.PlanPosition.ProductItemId,
-                    sheet.PlanPosition.QuantityPlanned)
+                    sheet.PlanPosition.QuantityPlanned,
+                    sheet.PlanPosition.GuildId,
+                    sheet.PlanPosition.StatusId,
+                    sheet.PlanPosition.Guild?.Name,
+                    sheet.PlanPosition.Status?.Name,
+                    sheet.PlanPosition.ProductItem?.Name)
                 : null,
             sheet.ProductItem != null
-                ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description, sheet.ProductItem.QuantityPlanned)
+                ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description)
                 : null,
             sheet.Unit != null
                 ? new UnitDto(sheet.Unit.Id, sheet.Unit.Name)
@@ -137,148 +150,110 @@ public class RoutingSheetsController : ControllerBase
         return Ok(dto);
     }
 
-    /// <summary>
-    /// Создать новый маршрутный лист (вручную)
-    /// </summary>
-    [HttpPost]
-    public async Task<ActionResult<RoutingSheetListDto>> Create([FromBody] CreateRoutingSheetDto dto)
+    [HttpPost("generate/{planPositionId}")]
+    [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.PlanningDept}")]
+    public async Task<ActionResult<RoutingSheetDto>> Generate(int planPositionId)
     {
-        // Check if number is unique
-        var numberExists = await _context.RoutingSheets.AnyAsync(rs => rs.Number == dto.Number);
-        if (numberExists)
-            return BadRequest("Маршрутный лист с таким номером уже существует");
+        var planPosition = await _context.PlanPositions
+            .Include(pp => pp.ProductItem)
+            .Include(pp => pp.Guild)
+            .Include(pp => pp.Status)
+            .FirstOrDefaultAsync(pp => pp.Id == planPositionId);
 
-        // Validate references
-        if (dto.PlanPositionId.HasValue)
+        if (planPosition == null)
+            return NotFound("Позиция плана не найдена");
+
+        if (planPosition.StatusId != 1) // not OPEN
+            return BadRequest("План должен быть в статусе «Открыт»");
+
+        var existingSheet = await _context.RoutingSheets
+            .AnyAsync(rs => rs.PlanPositionId == planPositionId);
+        if (existingSheet)
+            return BadRequest("Для этого плана уже сформирован маршрутный лист");
+
+        // Check guild access for WorkshopChief
+        var userGuildId = GetCurrentUserGuildId();
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue && planPosition.GuildId != userGuildId.Value)
+            return Forbid();
+
+        // Get product composition with part operations
+        var productParts = await _context.ProductParts
+            .Include(pp => pp.Part)
+                .ThenInclude(p => p!.PartOperations)
+            .Where(pp => pp.ProductItemId == planPosition.ProductItemId)
+            .OrderBy(pp => pp.PartId)
+            .ToListAsync();
+
+        // Build operations from part operations
+        var operations = new List<Operation>();
+        int seqNumber = 1;
+
+        foreach (var productPart in productParts)
         {
-            var planPositionExists = await _context.PlanPositions.AnyAsync(p => p.Id == dto.PlanPositionId.Value);
-            if (!planPositionExists)
-                return BadRequest("Указанная позиция плана не найдена");
+            if (productPart.Part?.PartOperations == null) continue;
+
+            foreach (var partOp in productPart.Part.PartOperations.OrderBy(po => po.SeqNumber))
+            {
+                var quantity = productPart.Quantity * planPosition.QuantityPlanned;
+                operations.Add(new Operation
+                {
+                    SeqNumber = seqNumber++,
+                    Name = partOp.Name,
+                    Code = partOp.Code,
+                    OperationTypeId = partOp.OperationTypeId,
+                    GuildId = partOp.GuildId,
+                    Price = partOp.Price,
+                    Quantity = quantity,
+                    Sum = partOp.Price.HasValue ? partOp.Price.Value * quantity : null,
+                    StatusId = 1 // PENDING
+                });
+            }
         }
 
-        if (dto.ProductItemId.HasValue)
-        {
-            var productItemExists = await _context.ProductItems.AnyAsync(p => p.Id == dto.ProductItemId.Value);
-            if (!productItemExists)
-                return BadRequest("Указанное изделие не найдено");
-        }
+        // Generate unique number
+        var number = await GenerateRoutingSheetNumber();
 
-        if (dto.UnitId.HasValue)
-        {
-            var unitExists = await _context.Units.AnyAsync(u => u.Id == dto.UnitId.Value);
-            if (!unitExists)
-                return BadRequest("Указанная единица измерения не найдена");
-        }
-
-        // Default status is DRAFT (id = 1)
         var sheet = new RoutingSheet
         {
-            Number = dto.Number,
-            Name = dto.Name,
-            PlanPositionId = dto.PlanPositionId,
-            ProductItemId = dto.ProductItemId,
-            UnitId = dto.UnitId,
+            Number = number,
+            Name = $"МЛ для {planPosition.ProductItem?.Name ?? "изделия"}",
+            PlanPositionId = planPositionId,
+            ProductItemId = planPosition.ProductItemId,
+            UnitId = 1, // шт.
             StatusId = 1, // DRAFT
-            Quantity = dto.Quantity,
-            CreatedAt = DateTime.UtcNow
+            Quantity = planPosition.QuantityPlanned,
+            CreatedAt = DateTime.UtcNow,
+            Operations = operations
         };
 
         _context.RoutingSheets.Add(sheet);
         await _context.SaveChangesAsync();
 
-        var unitName = dto.UnitId.HasValue
-            ? (await _context.Units.FindAsync(dto.UnitId.Value))?.Name
-            : null;
-
-        return CreatedAtAction(nameof(GetById), new { id = sheet.Id },
-            new RoutingSheetListDto(sheet.Id, sheet.Number, sheet.Name, sheet.PlanPositionId, sheet.ProductItemId, sheet.StatusId, sheet.Quantity, sheet.CreatedAt, "Черновик", null, null, unitName));
+        // Reload with all navigation properties for response
+        return await GetById(sheet.Id);
     }
 
-    /// <summary>
-    /// Обновить маршрутный лист
-    /// </summary>
-    [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoutingSheetDto dto)
-    {
-        var sheet = await _context.RoutingSheets.FindAsync(id);
-        if (sheet == null)
-            return NotFound();
-
-        // Check if number is unique (excluding current)
-        var numberExists = await _context.RoutingSheets.AnyAsync(rs => rs.Number == dto.Number && rs.Id != id);
-        if (numberExists)
-            return BadRequest("Маршрутный лист с таким номером уже существует");
-
-        // Validate references
-        if (dto.PlanPositionId.HasValue)
-        {
-            var planPositionExists = await _context.PlanPositions.AnyAsync(p => p.Id == dto.PlanPositionId.Value);
-            if (!planPositionExists)
-                return BadRequest("Указанная позиция плана не найдена");
-        }
-
-        if (dto.ProductItemId.HasValue)
-        {
-            var productItemExists = await _context.ProductItems.AnyAsync(p => p.Id == dto.ProductItemId.Value);
-            if (!productItemExists)
-                return BadRequest("Указанное изделие не найдено");
-        }
-
-        if (dto.UnitId.HasValue)
-        {
-            var unitExists = await _context.Units.AnyAsync(u => u.Id == dto.UnitId.Value);
-            if (!unitExists)
-                return BadRequest("Указанная единица измерения не найдена");
-        }
-
-        sheet.Number = dto.Number;
-        sheet.Name = dto.Name;
-        sheet.PlanPositionId = dto.PlanPositionId;
-        sheet.ProductItemId = dto.ProductItemId;
-        sheet.UnitId = dto.UnitId;
-        sheet.Quantity = dto.Quantity;
-        sheet.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Удалить маршрутный лист
-    /// </summary>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var sheet = await _context.RoutingSheets
-            .Include(rs => rs.Operations)
-            .FirstOrDefaultAsync(rs => rs.Id == id);
-
-        if (sheet == null)
-            return NotFound();
-
-        // Remove all operations first (cascade should handle this, but being explicit)
-        _context.Operations.RemoveRange(sheet.Operations);
-        _context.RoutingSheets.Remove(sheet);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Изменить статус маршрутного листа (провести/отменить)
-    /// </summary>
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.PlanningDept}")]
     public async Task<IActionResult> ChangeStatus(int id, [FromBody] ChangeStatusDto dto)
     {
-        var sheet = await _context.RoutingSheets.FindAsync(id);
+        var sheet = await _context.RoutingSheets
+            .Include(rs => rs.PlanPosition)
+            .FirstOrDefaultAsync(rs => rs.Id == id);
         if (sheet == null)
             return NotFound();
 
-        // Validate status exists
         var statusExists = await _context.RoutingSheetStatuses.AnyAsync(s => s.Id == dto.StatusId);
         if (!statusExists)
             return BadRequest("Указанный статус не найден");
+
+        // Check guild access for WorkshopChief
+        var userGuildId = GetCurrentUserGuildId();
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue
+            && sheet.PlanPosition != null && sheet.PlanPosition.GuildId != userGuildId.Value)
+            return Forbid();
 
         sheet.StatusId = dto.StatusId;
         sheet.UpdatedAt = DateTime.UtcNow;
@@ -288,68 +263,125 @@ public class RoutingSheetsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Разбить маршрутный лист на несколько (перенести операции в новый МЛ)
-    /// </summary>
     [HttpPost("{id}/split")]
-    public async Task<ActionResult<RoutingSheetListDto>> Split(int id, [FromBody] SplitRoutingSheetDto dto)
+    [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.PlanningDept}")]
+    public async Task<ActionResult<object>> Split(int id, [FromBody] SplitQuantityDto dto)
     {
         var sourceSheet = await _context.RoutingSheets
             .Include(rs => rs.Operations)
+            .Include(rs => rs.PlanPosition)
             .FirstOrDefaultAsync(rs => rs.Id == id);
 
         if (sourceSheet == null)
             return NotFound("Исходный маршрутный лист не найден");
 
-        // Check if new number is unique
-        var numberExists = await _context.RoutingSheets.AnyAsync(rs => rs.Number == dto.NewNumber);
-        if (numberExists)
-            return BadRequest("Маршрутный лист с таким номером уже существует");
+        if (dto.SplitQuantity <= 0)
+            return BadRequest("Количество для отделения должно быть больше 0");
 
-        // Validate operations exist in source sheet
-        var operationsToMove = sourceSheet.Operations
-            .Where(o => dto.OperationIds.Contains(o.Id))
-            .ToList();
+        if (dto.SplitQuantity >= sourceSheet.Quantity)
+            return BadRequest("Количество для отделения должно быть меньше текущего количества МЛ");
 
-        if (operationsToMove.Count != dto.OperationIds.Count)
-            return BadRequest("Некоторые из указанных операций не найдены в исходном маршрутном листе");
+        // Check guild access for WorkshopChief
+        var userGuildId = GetCurrentUserGuildId();
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue
+            && sourceSheet.PlanPosition != null && sourceSheet.PlanPosition.GuildId != userGuildId.Value)
+            return Forbid();
 
-        // Create new sheet
+        var originalQuantity = sourceSheet.Quantity;
+
+        // Validate that all operations can be split into whole numbers
+        foreach (var op in sourceSheet.Operations)
+        {
+            var newOpQty = op.Quantity * dto.SplitQuantity;
+            if (newOpQty % originalQuantity != 0)
+                return BadRequest($"Операция «{op.Name}» (кол-во {op.Quantity}) не делится нацело при разбиении {dto.SplitQuantity} из {originalQuantity}");
+        }
+
+        var remainingQuantity = originalQuantity - dto.SplitQuantity;
+
+        // Generate number for new sheet
+        var newNumber = await GenerateRoutingSheetNumber();
+
         var newSheet = new RoutingSheet
         {
-            Number = dto.NewNumber,
-            Name = dto.NewName,
+            Number = newNumber,
+            Name = sourceSheet.Name,
             PlanPositionId = sourceSheet.PlanPositionId,
             ProductItemId = sourceSheet.ProductItemId,
             UnitId = sourceSheet.UnitId,
             StatusId = 1, // DRAFT
-            Quantity = dto.NewQuantity,
+            Quantity = dto.SplitQuantity,
             CreatedAt = DateTime.UtcNow
         };
 
         _context.RoutingSheets.Add(newSheet);
         await _context.SaveChangesAsync();
 
-        // Move operations to new sheet and renumber
-        int newSeqNumber = 1;
-        foreach (var operation in operationsToMove.OrderBy(o => o.SeqNumber))
+        // Split operations proportionally
+        int seqNumber = 1;
+        foreach (var op in sourceSheet.Operations.OrderBy(o => o.SeqNumber))
         {
-            operation.RoutingSheetId = newSheet.Id;
-            operation.SeqNumber = newSeqNumber++;
+            var newOpQuantity = op.Quantity * dto.SplitQuantity / originalQuantity;
+            var remainingOpQuantity = op.Quantity - newOpQuantity;
+
+            // Create copy in new sheet
+            var newOp = new Operation
+            {
+                RoutingSheetId = newSheet.Id,
+                SeqNumber = seqNumber++,
+                Name = op.Name,
+                Code = op.Code,
+                OperationTypeId = op.OperationTypeId,
+                GuildId = op.GuildId,
+                PerformerId = null,
+                Price = op.Price,
+                Quantity = newOpQuantity,
+                Sum = op.Price.HasValue ? op.Price.Value * newOpQuantity : null,
+                StatusId = op.StatusId
+            };
+            _context.Operations.Add(newOp);
+
+            // Update original
+            op.Quantity = remainingOpQuantity;
+            op.Sum = op.Price.HasValue ? op.Price.Value * remainingOpQuantity : null;
         }
 
-        // Renumber remaining operations in source sheet
-        int sourceSeqNumber = 1;
-        foreach (var operation in sourceSheet.Operations.Where(o => !dto.OperationIds.Contains(o.Id)).OrderBy(o => o.SeqNumber))
-        {
-            operation.SeqNumber = sourceSeqNumber++;
-        }
-
+        sourceSheet.Quantity = remainingQuantity;
         sourceSheet.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetById), new { id = newSheet.Id },
-            new RoutingSheetListDto(newSheet.Id, newSheet.Number, newSheet.Name, newSheet.PlanPositionId, newSheet.ProductItemId, newSheet.StatusId, newSheet.Quantity, newSheet.CreatedAt, "Черновик", null, null, null));
+        return Ok(new { OriginalId = sourceSheet.Id, NewId = newSheet.Id });
+    }
+
+    private int? GetCurrentUserGuildId()
+    {
+        var guildIdClaim = User.FindFirst("GuildId")?.Value;
+        if (guildIdClaim != null && int.TryParse(guildIdClaim, out var guildId))
+            return guildId;
+        return null;
+    }
+
+    private async Task<string> GenerateRoutingSheetNumber()
+    {
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"МЛ-{year}-";
+
+        var lastNumber = await _context.RoutingSheets
+            .Where(rs => rs.Number.StartsWith(prefix))
+            .OrderByDescending(rs => rs.Number)
+            .Select(rs => rs.Number)
+            .FirstOrDefaultAsync();
+
+        int nextSeq = 1;
+        if (lastNumber != null)
+        {
+            var suffix = lastNumber.Substring(prefix.Length);
+            if (int.TryParse(suffix, out var lastSeq))
+                nextSeq = lastSeq + 1;
+        }
+
+        return $"{prefix}{nextSeq:D4}";
     }
 }
-
