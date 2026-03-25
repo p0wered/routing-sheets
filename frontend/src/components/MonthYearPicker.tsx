@@ -1,9 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-const MONTH_NAMES = [
-  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
-];
 
 interface MonthYearPickerProps {
   month: number;
@@ -12,6 +8,9 @@ interface MonthYearPickerProps {
 }
 
 export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps) {
+  const { t } = useTranslation();
+  const monthNames = t('months', { returnObjects: true }) as string[];
+
   const goBack = () => {
     if (month === 1) {
       onChange(12, year - 1);
@@ -28,24 +27,26 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
     }
   };
 
+  const label = monthNames[month - 1] ?? '';
+
   return (
     <div className="inline-flex items-center gap-1">
       <button
         type="button"
         className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
         onClick={goBack}
-        title="Предыдущий месяц"
+        title={t('monthPicker.prev')}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
       <span className="min-w-[160px] text-center text-sm font-semibold text-gray-900 select-none">
-        {MONTH_NAMES[month - 1]} {year}
+        {label} {year}
       </span>
       <button
         type="button"
         className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
         onClick={goForward}
-        title="Следующий месяц"
+        title={t('monthPicker.next')}
       >
         <ChevronRight className="w-4 h-4" />
       </button>

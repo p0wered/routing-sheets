@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_LABELS } from '../types/auth';
+import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { PlanPositionListItem } from '../types/plan';
 import type {
   RoutingSheetListItem,
@@ -66,12 +67,12 @@ type OpSortField =
   | 'sum'
   | 'statusName';
 
-function compareFieldValues(a: unknown, b: unknown): number {
+function compareFieldValues(a: unknown, b: unknown, locale: string): number {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
   if (b == null) return -1;
   if (typeof a === 'number' && typeof b === 'number') return a - b;
-  return String(a).localeCompare(String(b), 'ru');
+  return String(a).localeCompare(String(b), locale);
 }
 
 function SortIcon({ active, direction }: { active: boolean; direction: SortDirection }) {
@@ -132,7 +133,9 @@ function OpStatusBadge({
 }
 
 export default function RoutingSheetsPage() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  const roleLabel = useRoleLabel(user?.role ?? '');
   const queryClient = useQueryClient();
 
   const now = new Date();
@@ -258,11 +261,11 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['allRoutingSheets'] });
       queryClient.invalidateQueries({ queryKey: ['planPositions'] });
       setGeneratingPlan(null);
-      toast.success('Маршрутный лист сформирован');
+      toast.success(t('routingSheets.toastSheetGenerated'));
     },
     onError: (err: unknown) => {
       setGeneratingPlan(null);
-      toast.error(extractError(err, 'Не удалось сформировать маршрутный лист'));
+      toast.error(extractError(err, t('routingSheets.toastSheetGenerateFailed')));
     },
   });
 
@@ -271,11 +274,11 @@ export default function RoutingSheetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planPositions'] });
       setClosingPlan(null);
-      toast.success('План закрыт');
+      toast.success(t('routingSheets.toastPlanClosed'));
     },
     onError: (err: unknown) => {
       setClosingPlan(null);
-      toast.error(extractError(err, 'Не удалось закрыть план'));
+      toast.error(extractError(err, t('routingSheets.toastPlanCloseFailed')));
     },
   });
 
@@ -287,12 +290,12 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['allRoutingSheets'] });
       setStatusChangeSheet(null);
       setTargetStatusId(null);
-      toast.success('Статус МЛ изменён');
+      toast.success(t('routingSheets.toastRsStatusChanged'));
     },
     onError: (err: unknown) => {
       setStatusChangeSheet(null);
       setTargetStatusId(null);
-      toast.error(extractError(err, 'Не удалось изменить статус'));
+      toast.error(extractError(err, t('routingSheets.toastStatusChangeFailed')));
     },
   });
 
@@ -305,10 +308,10 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['operations'] });
       setSplitSheet(null);
       setSplitSheetError(null);
-      toast.success('Маршрутный лист разбит');
+      toast.success(t('routingSheets.toastRsSplit'));
     },
     onError: (err: unknown) => {
-      const msg = extractError(err, 'Не удалось разбить маршрутный лист');
+      const msg = extractError(err, t('routingSheets.toastRsSplitFailed'));
       setSplitSheetError(msg);
       toast.error(msg);
     },
@@ -321,10 +324,10 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
       setSplitOp(null);
       setSplitOpError(null);
-      toast.success('Операция разбита');
+      toast.success(t('routingSheets.toastOpSplit'));
     },
     onError: (err: unknown) => {
-      const msg = extractError(err, 'Не удалось разбить операцию');
+      const msg = extractError(err, t('routingSheets.toastOpSplitFailed'));
       setSplitOpError(msg);
       toast.error(msg);
     },
@@ -336,11 +339,11 @@ export default function RoutingSheetsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
       setOpStatusChange(null);
-      toast.success('Статус операции изменён');
+      toast.success(t('routingSheets.toastOpStatusChanged'));
     },
     onError: (err: unknown) => {
       setOpStatusChange(null);
-      toast.error(extractError(err, 'Не удалось изменить статус операции'));
+      toast.error(extractError(err, t('routingSheets.toastOpStatusFailed')));
     },
   });
 
@@ -351,16 +354,15 @@ export default function RoutingSheetsPage() {
       queryClient.invalidateQueries({ queryKey: ['operations', expandedSheetId] });
       setAssigningPerformerOp(null);
       setSelectedPerformerId(null);
-      toast.success('Исполнитель назначен');
+      toast.success(t('routingSheets.toastPerformerAssigned'));
     },
     onError: (err: unknown) => {
-      toast.error(extractError(err, 'Не удалось назначить исполнителя'));
+      toast.error(extractError(err, t('routingSheets.toastPerformerAssignFailed')));
     },
   });
 
   if (!user) return null;
 
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   const canManageSheets = user.role === 'PlanningDept' || user.role === 'WorkshopChief';
   const canChangeStatus = user.role === 'PlanningDept' || user.role === 'WorkshopChief';
   const canAssignPerformer = user.role === 'WorkshopChief' || user.role === 'WorkshopForeman';
@@ -409,11 +411,12 @@ export default function RoutingSheetsPage() {
 
   const sortedOps = useMemo(() => {
     if (!expandedOps || !opSortField) return expandedOps;
+    const loc = i18n.language.startsWith('en') ? 'en' : 'ru';
     return [...expandedOps].sort((a, b) => {
-      const cmp = compareFieldValues(a[opSortField], b[opSortField]);
+      const cmp = compareFieldValues(a[opSortField], b[opSortField], loc);
       return opSortDir === 'asc' ? cmp : -cmp;
     });
-  }, [expandedOps, opSortField, opSortDir]);
+  }, [expandedOps, opSortField, opSortDir, i18n.language]);
 
   function planHasRoutingSheets(planId: number): boolean {
     return (rsByPlanId.get(planId)?.length ?? 0) > 0;
@@ -447,12 +450,13 @@ export default function RoutingSheetsPage() {
                   setExpandedSheetId(null);
                 }}
                 options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
-                placeholder="Все цеха"
+                placeholder={t('routingSheets.allGuilds')}
               />
             )}
             {!isPlanningDept && user?.guildName && (
               <span className="text-sm text-gray-600">
-                Цех: <span className="font-semibold text-gray-900">{user.guildName}</span>
+                {t('common.guild')}:{' '}
+                <span className="font-semibold text-gray-900">{user.guildName}</span>
               </span>
             )}
           </div>
@@ -466,16 +470,16 @@ export default function RoutingSheetsPage() {
             </div>
           ) : !plans?.length ? (
             <div className="p-6 text-sm text-gray-500">
-              Планы производства на выбранный период не найдены.
+              {t('routingSheets.noPlans')}
             </div>
           ) : (
             <>
               <div className="px-6 pt-5 pb-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900">
-                    Планы производства
+                    {t('routingSheets.plansTitle')}
                   </h2>
-                  <p className="text-sm text-gray-500">Всего: {plans.length}</p>
+                  <p className="text-sm text-gray-500">{t('common.total', { count: plans.length })}</p>
                 </div>
               </div>
 
@@ -485,30 +489,30 @@ export default function RoutingSheetsPage() {
                     <tr className="border-b border-gray-200 bg-gray-50/50">
                       <th className="px-3 py-3 w-8" />
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Код
+                        {t('common.code')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Наименование
+                        {t('common.name')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                        Изделие
+                        {t('common.product')}
                       </th>
                       {isPlanningDept && (
                         <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
-                          Цех
+                          {t('common.guild')}
                         </th>
                       )}
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
-                        Кол-во
+                        {t('common.quantityShort')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
-                        Статус
+                        {t('common.status')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-center">
-                        МЛ
+                        {t('common.rsShort')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap text-right">
-                        Действия
+                        {t('common.actions')}
                       </th>
                     </tr>
                   </thead>
@@ -580,10 +584,14 @@ export default function RoutingSheetsPage() {
       {/* Generate RS confirmation */}
       {generatingPlan && (
         <ConfirmDialog
-          title="Формирование маршрутного листа"
-          message={`Сформировать маршрутный лист для плана «${generatingPlan.positionCode}» (${generatingPlan.productItemName ?? generatingPlan.name}, ${generatingPlan.quantityPlanned} шт.)?`}
-          confirmLabel="Сформировать"
-          confirmLoadingLabel="Формирование..."
+          title={t('routingSheets.confirmGenerateTitle')}
+          message={t('routingSheets.confirmGenerateMessage', {
+            code: generatingPlan.positionCode,
+            name: generatingPlan.productItemName ?? generatingPlan.name,
+            qty: generatingPlan.quantityPlanned,
+          })}
+          confirmLabel={t('common.generate')}
+          confirmLoadingLabel={t('common.generating')}
           confirmColor="primary"
           confirmIcon={<Zap className="w-4 h-4" />}
           isLoading={generateMutation.isPending}
@@ -595,10 +603,10 @@ export default function RoutingSheetsPage() {
       {/* Close plan confirmation */}
       {closingPlan && (
         <ConfirmDialog
-          title="Закрытие плана"
-          message={`Закрыть план «${closingPlan.positionCode}»? После закрытия формирование новых МЛ будет невозможно.`}
-          confirmLabel="Закрыть план"
-          confirmLoadingLabel="Закрытие..."
+          title={t('routingSheets.confirmCloseTitle')}
+          message={t('routingSheets.confirmCloseMessage', { code: closingPlan.positionCode })}
+          confirmLabel={t('common.close')}
+          confirmLoadingLabel={t('common.closing')}
           confirmColor="error"
           confirmIcon={<Lock className="w-4 h-4" />}
           isLoading={closePlanMutation.isPending}
@@ -614,10 +622,13 @@ export default function RoutingSheetsPage() {
           const TargetIcon = STATUS_ICONS[targetStatusId] ?? Play;
           return (
             <ConfirmDialog
-              title="Изменение статуса МЛ"
-              message={`Сменить статус маршрутного листа «${statusChangeSheet.number}» на «${getTargetStatusName()}»?`}
-              confirmLabel="Сменить"
-              confirmLoadingLabel="Смена статуса..."
+              title={t('routingSheets.confirmRsStatusTitle')}
+              message={t('routingSheets.confirmRsStatusMessage', {
+                number: statusChangeSheet.number,
+                status: getTargetStatusName(),
+              })}
+              confirmLabel={t('common.change')}
+              confirmLoadingLabel={t('common.changingStatus')}
               confirmColor={targetStatusId === 4 ? 'error' : 'primary'}
               confirmIcon={<TargetIcon className="w-4 h-4" />}
               isLoading={statusMutation.isPending}
@@ -638,10 +649,13 @@ export default function RoutingSheetsPage() {
           const TargetIcon = STATUS_ICONS[opStatusChange.statusId] ?? Clock;
           return (
             <ConfirmDialog
-              title="Изменение статуса операции"
-              message={`Сменить статус операции «${opStatusChange.op.name}» на «${getOpTargetStatusName()}»?`}
-              confirmLabel="Сменить"
-              confirmLoadingLabel="Смена статуса..."
+              title={t('routingSheets.confirmOpStatusTitle')}
+              message={t('routingSheets.confirmOpStatusMessage', {
+                name: opStatusChange.op.name,
+                status: getOpTargetStatusName(),
+              })}
+              confirmLabel={t('common.change')}
+              confirmLoadingLabel={t('common.changingStatus')}
               confirmColor={opStatusChange.statusId === 4 ? 'error' : 'primary'}
               confirmIcon={<TargetIcon className="w-4 h-4" />}
               isLoading={opStatusMutation.isPending}
@@ -659,7 +673,7 @@ export default function RoutingSheetsPage() {
       {/* Split RS modal */}
       <SplitQuantityModal
         isOpen={splitSheet !== null}
-        title={`Разбить МЛ «${splitSheet?.number ?? ''}»`}
+        title={t('routingSheets.splitRsTitle', { number: splitSheet?.number ?? '' })}
         currentQuantity={splitSheet?.quantity ?? 1}
         isSubmitting={splitRsMutation.isPending}
         error={splitSheetError}
@@ -675,7 +689,7 @@ export default function RoutingSheetsPage() {
       {/* Split operation modal */}
       <SplitQuantityModal
         isOpen={splitOp !== null}
-        title={`Разбить операцию «${splitOp?.name ?? ''}»`}
+        title={t('routingSheets.splitOpTitle', { name: splitOp?.name ?? '' })}
         currentQuantity={splitOp?.quantity ?? 1}
         isSubmitting={splitOpMutation.isPending}
         error={splitOpError}
@@ -702,17 +716,20 @@ export default function RoutingSheetsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              Назначить исполнителя
+              {t('routingSheets.assignPerformerTitle')}
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Операция: {assigningPerformerOp.name} (№{assigningPerformerOp.seqNumber})
+              {t('routingSheets.assignPerformerHint', {
+                name: assigningPerformerOp.name,
+                seq: assigningPerformerOp.seqNumber,
+              })}
             </p>
             <div className="mb-4">
               <Select<number>
                 value={selectedPerformerId}
                 onChange={setSelectedPerformerId}
                 options={performers?.map((p) => ({ value: p.id, label: p.fullName })) ?? []}
-                placeholder="Выберите исполнителя"
+                placeholder={t('routingSheets.selectPerformer')}
               />
             </div>
             <div className="flex gap-3">
@@ -732,7 +749,7 @@ export default function RoutingSheetsPage() {
                 }}
                 icon={<UserPlus />}
               >
-                {assignPerformerMutation.isPending ? 'Назначение...' : 'Назначить'}
+                {assignPerformerMutation.isPending ? t('common.assigning') : t('common.assign')}
               </Button>
               <Button
                 type="button"
@@ -745,7 +762,7 @@ export default function RoutingSheetsPage() {
                 }}
                 disabled={assignPerformerMutation.isPending}
               >
-                Отмена
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
@@ -822,6 +839,7 @@ function PlanRow({
   onAssignPerformer,
   onToggleOpSort,
 }: PlanRowProps) {
+  const { t } = useTranslation();
   const colSpan = isPlanningDept ? 9 : 8;
 
   return (
@@ -864,7 +882,7 @@ function PlanRow({
         <td className="px-4 py-4 text-center whitespace-nowrap">
           {hasRS ? (
             <span className="text-xs text-primary font-medium">
-              {planRS.length} МЛ
+              {t('routingSheets.rsCount', { count: planRS.length })}
             </span>
           ) : (
             <span className="text-xs text-gray-400">—</span>
@@ -880,10 +898,10 @@ function PlanRow({
                 type="button"
                 className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg text-xs font-medium text-primary bg-primary/8 hover:bg-primary/15 transition cursor-pointer gap-1"
                 onClick={onGenerate}
-                title="Сформировать маршрутный лист"
+                title={t('routingSheets.generateRsTitle')}
               >
                 <Zap className="w-3.5 h-3.5" />
-                Сформировать
+                {t('common.generate')}
               </button>
             )}
             {canManageSheets && isOpen && (
@@ -891,7 +909,7 @@ function PlanRow({
                 type="button"
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-error transition cursor-pointer"
                 onClick={onClosePlan}
-                title="Закрыть план"
+                title={t('routingSheets.closePlanTitle')}
               >
                 <Lock className="w-4 h-4" />
               </button>
@@ -911,7 +929,7 @@ function PlanRow({
                 </div>
               ) : !routingSheetsForPlan?.length ? (
                 <div className="px-6 py-4 text-sm text-gray-500">
-                  Маршрутные листы для этого плана ещё не сформированы.
+                  {t('routingSheets.noSheetsYet')}
                 </div>
               ) : (
                 <div className="p-4 space-y-2">
@@ -945,7 +963,7 @@ function PlanRow({
                             {sheet.name}
                           </span>
                           <span className="text-sm text-gray-500">
-                            Кол-во: {sheet.quantity}
+                            {t('routingSheets.qtyLabel', { qty: sheet.quantity })}
                           </span>
                           <StatusBadge
                             statusId={sheet.statusId}
@@ -956,18 +974,18 @@ function PlanRow({
                             className="ml-auto inline-flex gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {transitions.map((t) => {
-                              const Icon = STATUS_ICONS[t.id] ?? Play;
+                            {transitions.map((st) => {
+                              const Icon = STATUS_ICONS[st.id] ?? Play;
                               const hoverStyle =
-                                STATUS_ICON_STYLES[t.id] ??
+                                STATUS_ICON_STYLES[st.id] ??
                                 'hover:bg-primary/8 hover:text-primary';
                               return (
                                 <button
-                                  key={t.id}
+                                  key={st.id}
                                   type="button"
                                   className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 ${hoverStyle} transition cursor-pointer`}
-                                  onClick={() => onStatusChange(sheet, t.id)}
-                                  title={`Статус: ${t.name}`}
+                                  onClick={() => onStatusChange(sheet, st.id)}
+                                  title={t('common.statusWithName', { name: st.name })}
                                 >
                                   <Icon className="w-4 h-4" />
                                 </button>
@@ -978,7 +996,7 @@ function PlanRow({
                                 type="button"
                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
                                 onClick={() => onSplitSheet(sheet)}
-                                title="Разбить маршрутный лист"
+                                title={t('routingSheets.splitRsTooltip')}
                               >
                                 <Scissors className="w-4 h-4" />
                               </button>
@@ -995,25 +1013,25 @@ function PlanRow({
                               </div>
                             ) : !expandedOps?.length ? (
                               <p className="text-sm text-gray-500 px-4 py-3">
-                                Операций нет.
+                                {t('routingSheets.noOperations')}
                               </p>
                             ) : (
                               <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                   <thead>
                                     <tr className="border-b border-gray-200 bg-gray-50/50">
-                                      <SortTh field="seqNumber" label="№" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} className="w-10" />
-                                      <SortTh field="code" label="Код" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="name" label="Наименование" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="operationTypeName" label="Тип" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="guildName" label="Цех" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="performerName" label="Исполнитель" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="quantity" label="Кол-во" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
-                                      <SortTh field="price" label="Цена" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
-                                      <SortTh field="sum" label="Сумма" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
-                                      <SortTh field="statusName" label="Статус" current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
+                                      <SortTh field="seqNumber" label={t('common.numberSign')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} className="w-10" />
+                                      <SortTh field="code" label={t('common.code')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="name" label={t('common.name')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="operationTypeName" label={t('common.type')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="guildName" label={t('common.guild')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="performerName" label={t('common.performer')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
+                                      <SortTh field="quantity" label={t('common.quantityShort')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
+                                      <SortTh field="price" label={t('common.price')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
+                                      <SortTh field="sum" label={t('common.sum')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
+                                      <SortTh field="statusName" label={t('common.status')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
                                       <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
-                                        Действия
+                                        {t('common.actions')}
                                       </th>
                                     </tr>
                                   </thead>
@@ -1053,7 +1071,7 @@ function PlanRow({
                                                   type="button"
                                                   className="inline-flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-primary hover:bg-primary/8 transition cursor-pointer"
                                                   onClick={() => onAssignPerformer(op)}
-                                                  title="Назначить исполнителя"
+                                                  title={t('routingSheets.assignPerformerTooltip')}
                                                 >
                                                   <UserPlus className="w-3.5 h-3.5" />
                                                 </button>
@@ -1078,18 +1096,18 @@ function PlanRow({
                                           </td>
                                           <td className="px-4 py-3 text-right whitespace-nowrap">
                                             <div className="inline-flex gap-0.5">
-                                              {opTransitions.map((t) => {
-                                                const Icon = STATUS_ICONS[t.id] ?? Clock;
+                                              {opTransitions.map((st) => {
+                                                const Icon = STATUS_ICONS[st.id] ?? Clock;
                                                 const hoverStyle =
-                                                  STATUS_ICON_STYLES[t.id] ??
+                                                  STATUS_ICON_STYLES[st.id] ??
                                                   'hover:bg-primary/8 hover:text-primary';
                                                 return (
                                                   <button
-                                                    key={t.id}
+                                                    key={st.id}
                                                     type="button"
                                                     className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 ${hoverStyle} transition cursor-pointer`}
-                                                    onClick={() => onOpStatusChange(op, t.id)}
-                                                    title={`Статус: ${t.name}`}
+                                                    onClick={() => onOpStatusChange(op, st.id)}
+                                                    title={t('common.statusWithName', { name: st.name })}
                                                   >
                                                     <Icon className="w-3.5 h-3.5" />
                                                   </button>
@@ -1099,7 +1117,7 @@ function PlanRow({
                                                 type="button"
                                                 className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition cursor-pointer"
                                                 onClick={() => onSplitOp(op)}
-                                                title="Разбить операцию"
+                                                title={t('routingSheets.splitOpTooltip')}
                                               >
                                                 <Scissors className="w-3.5 h-3.5" />
                                               </button>

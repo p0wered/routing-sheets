@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 
 interface DropdownListItem {
   key: string;
@@ -10,13 +10,18 @@ interface DropdownListItem {
 interface DropdownListProps {
   items: DropdownListItem[];
   className?: string;
+  /** Optional block above the list (e.g. language switcher) */
+  header?: ReactNode;
 }
 
-export function DropdownList({ items, className = '' }: DropdownListProps) {
+export function DropdownList({ items, className = '', header }: DropdownListProps) {
   return (
     <div
-      className={`absolute space-y-1 z-10 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 max-h-64 overflow-auto ${className}`}
+      className={`absolute space-y-1 z-10 mt-1 bg-white border border-gray-200 rounded-2xl shadow-lg p-2.5 max-h-68 overflow-auto ${className}`}
     >
+      {header != null && (
+        <div className="pb-1">{header}</div>
+      )}
       {items.map((item) => (
         <button
           key={item.key}

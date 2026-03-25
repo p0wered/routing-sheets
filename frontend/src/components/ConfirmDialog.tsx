@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 
 interface ConfirmDialogProps {
@@ -24,6 +25,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <div
       className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-xs"
@@ -55,7 +57,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Отмена
+            {t('common.cancel')}
           </Button>
         </div>
       </div>

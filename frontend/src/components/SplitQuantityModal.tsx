@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Scissors } from 'lucide-react';
 import { Modal } from './Modal';
 import { TextInput } from './TextInput';
@@ -23,6 +24,7 @@ export function SplitQuantityModal({
   onClose,
   onSubmit,
 }: SplitQuantityModalProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [prevIsOpen, setPrevIsOpen] = useState(false);
@@ -41,15 +43,15 @@ export function SplitQuantityModal({
   const handleSubmit = () => {
     const qty = Number(value);
     if (!value.trim() || Number.isNaN(qty) || !Number.isInteger(qty)) {
-      setFieldError('Введите целое число');
+      setFieldError(t('splitQuantity.errorInteger'));
       return;
     }
     if (qty <= 0) {
-      setFieldError('Количество должно быть больше 0');
+      setFieldError(t('splitQuantity.errorPositive'));
       return;
     }
     if (qty >= currentQuantity) {
-      setFieldError(`Количество должно быть меньше ${currentQuantity}`);
+      setFieldError(t('splitQuantity.errorLessThan', { max: currentQuantity }));
       return;
     }
     setFieldError(null);
@@ -67,20 +69,19 @@ export function SplitQuantityModal({
 
         <div className="bg-gray-50 rounded-xl px-4 py-3">
           <p className="text-sm text-gray-600">
-            Текущее количество: <span className="font-semibold text-gray-900">{currentQuantity}</span>
+            {t('splitQuantity.currentQtyLabel')}{' '}
+            <span className="font-semibold text-gray-900">{currentQuantity}</span>
           </p>
           {value && !Number.isNaN(splitQty) && splitQty > 0 && splitQty < currentQuantity && (
             <p className="text-sm text-gray-600 mt-1">
-              Будет: <span className="font-semibold text-gray-900">{remaining}</span>
-              {' и '}
-              <span className="font-semibold text-primary">{splitQty}</span>
+              {t('splitQuantity.willBe', { remaining, split: splitQty })}
             </p>
           )}
         </div>
 
         <TextInput
           id="split-quantity"
-          label="Количество для отделения"
+          label={t('splitQuantity.label')}
           type="number"
           min={1}
           max={currentQuantity - 1}
@@ -104,7 +105,7 @@ export function SplitQuantityModal({
           disabled={isSubmitting}
           icon={<Scissors />}
         >
-          {isSubmitting ? 'Разбиение...' : 'Разбить'}
+          {isSubmitting ? t('common.splitting') : t('common.split')}
         </Button>
         <Button
           type="button"
@@ -114,7 +115,7 @@ export function SplitQuantityModal({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          Отмена
+          {t('common.cancel')}
         </Button>
       </div>
     </Modal>

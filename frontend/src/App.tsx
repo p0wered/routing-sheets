@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { I18nDocumentSync } from './components/I18nDocumentSync';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Spinner } from './components/Spinner';
@@ -71,9 +72,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
+          <I18nDocumentSync />
           <AppRoutes />
           <Toaster
-            position="top-right"
+            position="bottom-right"
             toastOptions={{
               classNames: {
                 toast:

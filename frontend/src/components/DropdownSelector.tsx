@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DropdownList } from './DropdownList';
 import { Spinner } from './Spinner';
@@ -27,6 +28,7 @@ export function Select<TValue = string>({
   isLoading,
   className = '',
 }: SelectProps<TValue>) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -66,7 +68,7 @@ export function Select<TValue = string>({
     setIsOpen(false);
   };
 
-  const labelText = selectedOption?.label ?? placeholder ?? 'Выберите значение';
+  const labelText = selectedOption?.label ?? placeholder ?? t('common.selectValue');
 
   return (
     <div ref={containerRef} className={`relative min-w-[260px] ${className}`}>

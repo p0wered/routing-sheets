@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_LABELS } from '../types/auth';
+import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { User } from '../types/auth';
 import type { UserFormData } from '../components/UserModal';
 import { RoutingHeader } from '../components/Header';
@@ -14,7 +15,9 @@ import { toast, extractError } from '../utils/toast';
 import { Pencil, Trash2, UserPlus } from 'lucide-react';
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const roleLabel = useRoleLabel(user?.role ?? '');
   const queryClient = useQueryClient();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,10 +40,10 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       closeModal();
-      toast.success('Пользователь создан');
+      toast.success(t('users.toastCreated'));
     },
     onError: (error: unknown) => {
-      const msg = extractError(error, 'Не удалось создать пользователя');
+      const msg = extractError(error, t('users.toastCreateFailed'));
       setModalError(msg);
       toast.error(msg);
     },
@@ -52,10 +55,10 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       closeModal();
-      toast.success('Пользователь обновлён');
+      toast.success(t('users.toastUpdated'));
     },
     onError: (error: unknown) => {
-      const msg = extractError(error, 'Не удалось обновить пользователя');
+      const msg = extractError(error, t('users.toastUpdateFailed'));
       setModalError(msg);
       toast.error(msg);
     },
@@ -66,17 +69,15 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setDeletingId(null);
-      toast.success('Пользователь удалён');
+      toast.success(t('users.toastDeleted'));
     },
     onError: (error: unknown) => {
       setDeletingId(null);
-      toast.error(extractError(error, 'Не удалось удалить пользователя'));
+      toast.error(extractError(error, t('users.toastDeleteFailed')));
     },
   });
 
   if (!user) return null;
-
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
 
   function openCreate() {
     setEditingUser(null);
@@ -115,7 +116,7 @@ export default function UsersPage() {
       data.guildId !== null &&
       chiefExistsInGuild(data.guildId, editingUser?.id)
     ) {
-      setModalError('В этом цехе уже есть начальник');
+      setModalError(t('users.chiefExistsInGuild'));
       return;
     }
 
@@ -161,10 +162,10 @@ export default function UsersPage() {
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
           <div className="flex items-center justify-between">
             <p className="pl-3 text-base font-bold">
-              Управление пользователями
+              {t('users.title')}
             </p>
             <Button type="button" size="small" color="primary" onClick={openCreate} icon={<UserPlus />}>
-              Добавить пользователя
+              {t('users.addUser')}
             </Button>
           </div>
         </section>
@@ -176,17 +177,17 @@ export default function UsersPage() {
             </div>
           ) : !users?.length ? (
             <div className="p-6 text-center text-sm text-gray-500">
-              Пользователи не найдены
+              {t('users.empty')}
             </div>
           ) : (
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50/50">
-                  <th className="px-6 py-3 font-semibold text-gray-600">Логин</th>
-                  <th className="px-6 py-3 font-semibold text-gray-600">Роль</th>
-                  <th className="px-6 py-3 font-semibold text-gray-600">Цех</th>
+                  <th className="px-6 py-3 font-semibold text-gray-600">{t('users.colLogin')}</th>
+                  <th className="px-6 py-3 font-semibold text-gray-600">{t('users.colRole')}</th>
+                  <th className="px-6 py-3 font-semibold text-gray-600">{t('users.colGuild')}</th>
                   <th className="px-6 py-3 font-semibold text-gray-600 text-right">
-                    Действия
+                    {t('common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -201,7 +202,7 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       <span className="inline-block bg-primary/8 text-primary rounded-lg px-2.5 py-1 text-xs font-semibold">
-                        {ROLE_LABELS[u.role] ?? u.role}
+                        {t(`roles.${u.role}`, { defaultValue: u.role })}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
@@ -213,7 +214,7 @@ export default function UsersPage() {
                           type="button"
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-primary/8 hover:text-primary transition cursor-pointer"
                           onClick={() => openEdit(u)}
-                          title="Редактировать"
+                          title={t('common.edit')}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -221,7 +222,7 @@ export default function UsersPage() {
                           type="button"
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-error transition cursor-pointer"
                           onClick={() => handleDelete(u.id)}
-                          title="Удалить"
+                          title={t('common.delete')}
                           disabled={u.id === user.id}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -257,11 +258,10 @@ export default function UsersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              Удаление пользователя
+              {t('users.deleteTitle')}
             </h2>
             <p className="text-sm text-gray-600 mb-6">
-              Вы уверены, что хотите удалить этого пользователя? Это действие
-              нельзя отменить.
+              {t('users.deleteMessage')}
             </p>
             <div className="flex gap-3">
               <Button
@@ -273,7 +273,7 @@ export default function UsersPage() {
                 disabled={deleteMutation.isPending}
                 icon={<Trash2 />}
               >
-                {deleteMutation.isPending ? 'Удаление...' : 'Удалить'}
+                {deleteMutation.isPending ? t('common.deleting') : t('common.delete')}
               </Button>
               <Button
                 type="button"
@@ -283,7 +283,7 @@ export default function UsersPage() {
                 onClick={() => setDeletingId(null)}
                 disabled={deleteMutation.isPending}
               >
-                Отмена
+                {t('common.cancel')}
               </Button>
             </div>
           </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_LABELS } from '../types/auth';
+import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { OperationListItem, OperationStatus } from '../types/routingSheet';
 import { OP_STATUS_COLORS } from '../types/routingSheet';
 import { RoutingHeader } from '../components/Header';
@@ -70,7 +71,9 @@ function OpStatusBadge({
 }
 
 export default function OperationsByGuildPage() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const roleLabel = useRoleLabel(user?.role ?? '');
   const queryClient = useQueryClient();
 
   const isGuildLocked = user?.role === 'WorkshopChief' || user?.role === 'WorkshopForeman';
@@ -121,11 +124,11 @@ export default function OperationsByGuildPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
       setOpStatusChange(null);
-      toast.success('Статус операции изменён');
+      toast.success(t('routingSheets.toastOpStatusChanged'));
     },
     onError: (err: unknown) => {
       setOpStatusChange(null);
-      toast.error(extractError(err, 'Не удалось изменить статус операции'));
+      toast.error(extractError(err, t('routingSheets.toastOpStatusFailed')));
     },
   });
 
@@ -136,10 +139,10 @@ export default function OperationsByGuildPage() {
       queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
       setAssigningPerformerOp(null);
       setSelectedPerformerId(null);
-      toast.success('Исполнитель назначен');
+      toast.success(t('routingSheets.toastPerformerAssigned'));
     },
     onError: (err: unknown) => {
-      toast.error(extractError(err, 'Не удалось назначить исполнителя'));
+      toast.error(extractError(err, t('routingSheets.toastPerformerAssignFailed')));
     },
   });
 
@@ -150,17 +153,16 @@ export default function OperationsByGuildPage() {
       queryClient.invalidateQueries({ queryKey: ['operations-by-guild', selectedGuildId] });
       setSplittingOp(null);
       setSplitOpError(null);
-      toast.success('Операция разбита');
+      toast.success(t('routingSheets.toastOpSplit'));
     },
     onError: (err: unknown) => {
-      setSplitOpError(extractError(err, 'Не удалось разбить операцию'));
-      toast.error(extractError(err, 'Не удалось разбить операцию'));
+      setSplitOpError(extractError(err, t('routingSheets.toastOpSplitFailed')));
+      toast.error(extractError(err, t('routingSheets.toastOpSplitFailed')));
     },
   });
 
   if (!user) return null;
 
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   const canAssignPerformer = user.role === 'WorkshopChief' || user.role === 'WorkshopForeman';
   const canChangeOpStatus = user.role === 'WorkshopChief' || user.role === 'WorkshopForeman';
 
@@ -190,7 +192,7 @@ export default function OperationsByGuildPage() {
               value={selectedGuildId}
               onChange={setSelectedGuildId}
               options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
-              placeholder="Выберите цех"
+              placeholder={t('operationsGuild.selectGuild')}
               isLoading={isGuildsLoading}
               disabled={isGuildLocked}
             />
@@ -200,7 +202,7 @@ export default function OperationsByGuildPage() {
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 overflow-hidden">
           {!selectedGuild ? (
             <div className="p-6 text-sm text-gray-500">
-              Выберите цех, чтобы увидеть связанные операции.
+              {t('operationsGuild.hintSelectGuild')}
             </div>
           ) : isOpsLoading ? (
             <div className="p-6 flex justify-center">
@@ -209,14 +211,14 @@ export default function OperationsByGuildPage() {
           ) : !operations?.length ? (
             <div className="p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">{selectedGuild.name}</h2>
-              <p className="text-sm text-gray-500">Операций по этому цеху не найдено.</p>
+              <p className="text-sm text-gray-500">{t('operationsGuild.noOperations')}</p>
             </div>
           ) : (
             <>
               <div className="px-6 pt-5 pb-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900">{selectedGuild.name}</h2>
-                  <p className="text-sm text-gray-500">Всего: {operations.length}</p>
+                  <p className="text-sm text-gray-500">{t('common.total', { count: operations.length })}</p>
                 </div>
               </div>
 
@@ -224,22 +226,22 @@ export default function OperationsByGuildPage() {
                 <table className="w-full text-sm text-left">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50/50">
-                      <th className="px-4 py-3 font-semibold text-gray-600">МЛ</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600 w-10">№</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600">Код</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600">Наименование</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600">Тип</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600">Исполнитель</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.rsShort')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600 w-10">{t('common.numberSign')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.code')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.name')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.type')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.performer')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600 text-center">
-                        Кол-во
+                        {t('common.quantityShort')}
                       </th>
-                      <th className="px-4 py-3 font-semibold text-gray-600 text-right">Цена</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600 text-right">Сумма</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600 text-right">{t('common.price')}</th>
+                      <th className="px-4 py-3 font-semibold text-gray-600 text-right">{t('common.sum')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600 text-center">
-                        Статус
+                        {t('common.status')}
                       </th>
                       <th className="px-4 py-3 font-semibold text-gray-600 text-right">
-                        Действия
+                        {t('common.actions')}
                       </th>
                     </tr>
                   </thead>
@@ -277,7 +279,7 @@ export default function OperationsByGuildPage() {
                                     setAssigningPerformerOp(op);
                                     setSelectedPerformerId(null);
                                   }}
-                                  title="Назначить исполнителя"
+                                  title={t('routingSheets.assignPerformerTooltip')}
                                 >
                                   <UserPlus className="w-3.5 h-3.5" />
                                 </button>
@@ -303,18 +305,18 @@ export default function OperationsByGuildPage() {
                           <td className="px-4 py-3 text-right whitespace-nowrap">
                             <div className="inline-flex gap-0.5">
                               {canChangeOpStatus &&
-                                opTransitions.map((t) => {
-                                  const Icon = STATUS_ICONS[t.id] ?? Clock;
+                                opTransitions.map((st) => {
+                                  const Icon = STATUS_ICONS[st.id] ?? Clock;
                                   const hoverStyle =
-                                    STATUS_ICON_STYLES[t.id] ??
+                                    STATUS_ICON_STYLES[st.id] ??
                                     'hover:bg-primary/8 hover:text-primary';
                                   return (
                                     <button
-                                      key={t.id}
+                                      key={st.id}
                                       type="button"
                                       className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 ${hoverStyle} transition cursor-pointer`}
-                                      onClick={() => setOpStatusChange({ op, statusId: t.id })}
-                                      title={`Статус: ${t.name}`}
+                                      onClick={() => setOpStatusChange({ op, statusId: st.id })}
+                                      title={t('common.statusWithName', { name: st.name })}
                                     >
                                       <Icon className="w-3.5 h-3.5" />
                                     </button>
@@ -328,7 +330,7 @@ export default function OperationsByGuildPage() {
                                     setSplittingOp(op);
                                     setSplitOpError(null);
                                   }}
-                                  title="Разбить по количеству"
+                                  title={t('operationsGuild.splitQuantityTooltip')}
                                 >
                                   <Scissors className="w-3.5 h-3.5" />
                                 </button>
@@ -346,16 +348,18 @@ export default function OperationsByGuildPage() {
         </section>
       </main>
 
-      {/* Operation status change confirmation */}
       {opStatusChange &&
         (() => {
           const TargetIcon = STATUS_ICONS[opStatusChange.statusId] ?? Clock;
           return (
             <ConfirmDialog
-              title="Изменение статуса операции"
-              message={`Сменить статус операции «${opStatusChange.op.name}» на «${getOpTargetStatusName()}»?`}
-              confirmLabel="Сменить"
-              confirmLoadingLabel="Смена статуса..."
+              title={t('routingSheets.confirmOpStatusTitle')}
+              message={t('routingSheets.confirmOpStatusMessage', {
+                name: opStatusChange.op.name,
+                status: getOpTargetStatusName(),
+              })}
+              confirmLabel={t('common.change')}
+              confirmLoadingLabel={t('common.changingStatus')}
               confirmColor={opStatusChange.statusId === 4 ? 'error' : 'primary'}
               confirmIcon={<TargetIcon className="w-4 h-4" />}
               isLoading={opStatusMutation.isPending}
@@ -370,11 +374,10 @@ export default function OperationsByGuildPage() {
           );
         })()}
 
-      {/* Split operation modal */}
       {splittingOp && (
         <SplitQuantityModal
           isOpen={!!splittingOp}
-          title="Разбить операцию по количеству"
+          title={t('operationsGuild.splitByQuantityTitle')}
           currentQuantity={splittingOp.quantity}
           isSubmitting={splitOpMutation.isPending}
           error={splitOpError}
@@ -388,7 +391,6 @@ export default function OperationsByGuildPage() {
         />
       )}
 
-      {/* Assign performer modal */}
       {assigningPerformerOp && (
         <div
           className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-xs"
@@ -401,16 +403,21 @@ export default function OperationsByGuildPage() {
             className="bg-white rounded-3xl shadow-xl/5 w-full max-w-sm p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Назначить исполнителя</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              {t('routingSheets.assignPerformerTitle')}
+            </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Операция: {assigningPerformerOp.name} (№{assigningPerformerOp.seqNumber})
+              {t('routingSheets.assignPerformerHint', {
+                name: assigningPerformerOp.name,
+                seq: assigningPerformerOp.seqNumber,
+              })}
             </p>
             <div className="mb-4">
               <Select<number>
                 value={selectedPerformerId}
                 onChange={setSelectedPerformerId}
                 options={performers?.map((p) => ({ value: p.id, label: p.fullName })) ?? []}
-                placeholder="Выберите исполнителя"
+                placeholder={t('routingSheets.selectPerformer')}
               />
             </div>
             <div className="flex gap-3">
@@ -430,7 +437,7 @@ export default function OperationsByGuildPage() {
                 }}
                 icon={<UserPlus />}
               >
-                {assignPerformerMutation.isPending ? 'Назначение...' : 'Назначить'}
+                {assignPerformerMutation.isPending ? t('common.assigning') : t('common.assign')}
               </Button>
               <Button
                 type="button"
@@ -443,13 +450,12 @@ export default function OperationsByGuildPage() {
                 }}
                 disabled={assignPerformerMutation.isPending}
               >
-                Отмена
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

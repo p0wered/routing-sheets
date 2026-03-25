@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_LABELS } from '../types/auth';
+import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { NamedReference, Performer, ReferenceTab } from '../types/references';
-import { REFERENCE_TAB_LABELS } from '../types/references';
 import { RoutingHeader } from '../components/Header';
 import { Button } from '../components/Button';
 import { ReferenceModal } from '../components/ReferenceModal';
@@ -34,27 +34,9 @@ interface FieldConfig {
   required?: boolean;
 }
 
-const NAMED_FIELDS: FieldConfig[] = [
-  { key: 'name', label: 'Название', placeholder: 'Введите название' },
-];
-
-const PERFORMER_FIELDS: FieldConfig[] = [
-  { key: 'fullName', label: 'ФИО', placeholder: 'Введите ФИО' },
-  { key: 'role', label: 'Должность', placeholder: 'Введите должность', required: false },
-];
-
-function columnsForTab(tab: ReferenceTab) {
-  if (tab === 'performers') {
-    return [
-      { key: 'fullName', label: 'ФИО' },
-      { key: 'role', label: 'Должность' },
-    ];
-  }
-  return [{ key: 'name', label: 'Название' }];
-}
-
-function fieldsForTab(tab: ReferenceTab) {
-  return tab === 'performers' ? PERFORMER_FIELDS : NAMED_FIELDS;
+interface ColumnConfig {
+  key: string;
+  label: string;
 }
 
 function itemToValues(tab: ReferenceTab, item: NamedReference | Performer): Record<string, string> {
@@ -75,7 +57,9 @@ function cellValue(tab: ReferenceTab, item: NamedReference | Performer, colKey: 
 }
 
 export default function ReferencesPage() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const roleLabel = useRoleLabel(user?.role ?? '');
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<ReferenceTab>('units');
@@ -85,6 +69,46 @@ export default function ReferencesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const isPerformers = activeTab === 'performers';
+
+  const namedFields: FieldConfig[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: t('references.fields.name'),
+        placeholder: t('references.fields.namePlaceholder'),
+      },
+    ],
+    [t]
+  );
+
+  const performerFields: FieldConfig[] = useMemo(
+    () => [
+      {
+        key: 'fullName',
+        label: t('references.fields.fullName'),
+        placeholder: t('references.fields.fullNamePlaceholder'),
+      },
+      {
+        key: 'role',
+        label: t('references.fields.role'),
+        placeholder: t('references.fields.rolePlaceholder'),
+        required: false,
+      },
+    ],
+    [t]
+  );
+
+  const columns = useMemo((): ColumnConfig[] => {
+    if (activeTab === 'performers') {
+      return [
+        { key: 'fullName', label: t('references.columns.fullName') },
+        { key: 'role', label: t('references.columns.role') },
+      ];
+    }
+    return [{ key: 'name', label: t('references.columns.name') }];
+  }, [activeTab, t]);
+
+  const fields = isPerformers ? performerFields : namedFields;
 
   const namedQuery = useQuery<(NamedReference | Performer)[]>({
     queryKey: ['references', activeTab],
@@ -103,10 +127,10 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       closeModal();
-      toast.success('Запись создана');
+      toast.success(t('references.toastCreated'));
     },
     onError: (err: unknown) => {
-      const msg = extractError(err, 'Не удалось создать запись');
+      const msg = extractError(err, t('references.toastCreateFailed'));
       setModalError(msg);
       toast.error(msg);
     },
@@ -121,10 +145,10 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       closeModal();
-      toast.success('Запись обновлена');
+      toast.success(t('references.toastUpdated'));
     },
     onError: (err: unknown) => {
-      const msg = extractError(err, 'Не удалось обновить запись');
+      const msg = extractError(err, t('references.toastUpdateFailed'));
       setModalError(msg);
       toast.error(msg);
     },
@@ -138,20 +162,17 @@ export default function ReferencesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['references', activeTab] });
       setDeletingId(null);
-      toast.success('Запись удалена');
+      toast.success(t('references.toastDeleted'));
     },
     onError: (err: unknown) => {
       setDeletingId(null);
-      toast.error(extractError(err, 'Не удалось удалить запись'));
+      toast.error(extractError(err, t('references.toastDeleteFailed')));
     },
   });
 
   if (!user) return null;
 
-  const roleLabel = ROLE_LABELS[user.role] ?? user.role;
   const items = (namedQuery.data ?? []) as (NamedReference | Performer)[];
-  const columns = columnsForTab(activeTab);
-  const fields = fieldsForTab(activeTab);
 
   function openCreate() {
     setEditingItem(null);
@@ -191,19 +212,17 @@ export default function ReferencesPage() {
       <RoutingHeader user={user} roleLabel={roleLabel} onLogout={logout} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Toolbar */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
           <div className="flex items-center justify-between">
             <p className="pl-3 text-base font-bold">
-              Управление справочниками
+              {t('references.title')}
             </p>
             <Button type="button" size="small" color="primary" onClick={openCreate} icon={<Plus />}>
-              Добавить
+              {t('references.add')}
             </Button>
           </div>
         </section>
 
-        {/* Tabs */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 overflow-hidden">
           <div className="flex border-b border-gray-200">
             {TABS.map((tab) => (
@@ -217,18 +236,17 @@ export default function ReferencesPage() {
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
-                {REFERENCE_TAB_LABELS[tab]}
+                {t(`references.tabs.${tab}`)}
               </button>
             ))}
           </div>
 
-          {/* Table */}
           {namedQuery.isLoading ? (
             <div className="p-6 flex justify-center">
               <Spinner />
             </div>
           ) : !items.length ? (
-            <div className="p-6 text-center text-sm text-gray-500">Записи не найдены</div>
+            <div className="p-6 text-center text-sm text-gray-500">{t('references.empty')}</div>
           ) : (
             <table className="w-full text-sm text-left">
               <thead>
@@ -238,7 +256,7 @@ export default function ReferencesPage() {
                       {col.label}
                     </th>
                   ))}
-                  <th className="px-6 py-3 font-semibold text-gray-600 text-right">Действия</th>
+                  <th className="px-6 py-3 font-semibold text-gray-600 text-right">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -258,7 +276,7 @@ export default function ReferencesPage() {
                           type="button"
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-primary/8 hover:text-primary transition cursor-pointer"
                           onClick={() => openEdit(item)}
-                          title="Редактировать"
+                          title={t('common.edit')}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -266,7 +284,7 @@ export default function ReferencesPage() {
                           type="button"
                           className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-red-50 hover:text-error transition cursor-pointer"
                           onClick={() => setDeletingId(item.id)}
-                          title="Удалить"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -280,10 +298,9 @@ export default function ReferencesPage() {
         </section>
       </main>
 
-      {/* Create / Edit modal */}
       <ReferenceModal
         isOpen={isModalOpen}
-        title={editingItem ? 'Редактировать запись' : 'Новая запись'}
+        title={editingItem ? t('references.modalEditTitle') : t('references.modalCreateTitle')}
         fields={fields}
         initialValues={editingItem ? itemToValues(activeTab, editingItem) : undefined}
         isSubmitting={isSubmitting}
@@ -292,7 +309,6 @@ export default function ReferencesPage() {
         onSubmit={handleSubmit}
       />
 
-      {/* Delete confirmation */}
       {deletingId !== null && (
         <div
           className="fixed inset-0 z-20 flex items-center justify-center bg-black/40"
@@ -302,9 +318,9 @@ export default function ReferencesPage() {
             className="bg-white rounded-3xl shadow-xl/5 w-full max-w-sm p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Удаление записи</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">{t('references.deleteTitle')}</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить.
+              {t('references.deleteMessage')}
             </p>
             <div className="flex gap-3">
               <Button
@@ -316,7 +332,7 @@ export default function ReferencesPage() {
                 disabled={deleteMutation.isPending}
                 icon={<Trash2 />}
               >
-                {deleteMutation.isPending ? 'Удаление...' : 'Удалить'}
+                {deleteMutation.isPending ? t('common.deleting') : t('common.delete')}
               </Button>
               <Button
                 type="button"
@@ -327,7 +343,7 @@ export default function ReferencesPage() {
                 disabled={deleteMutation.isPending}
                 icon={<X />}
               >
-                Отмена
+                {t('common.cancel')}
               </Button>
             </div>
           </div>

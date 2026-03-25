@@ -19,10 +19,3 @@ export interface CreatePerformer {
 }
 
 export type ReferenceTab = 'units' | 'guilds' | 'operationTypes' | 'performers';
-
-export const REFERENCE_TAB_LABELS: Record<ReferenceTab, string> = {
-  units: 'Единицы измерения',
-  guilds: 'Цеха',
-  operationTypes: 'Типы операций',
-  performers: 'Исполнители',
-};

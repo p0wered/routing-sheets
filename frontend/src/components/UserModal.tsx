@@ -1,16 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import type { User } from '../types/auth';
-import { ROLE_LABELS } from '../types/auth';
+import { USER_ROLE_KEYS } from '../types/auth';
 import type { NamedReference } from '../types/references';
 import { Modal } from './Modal';
 import { TextInput } from './TextInput';
 import { Select, type SelectOption } from './DropdownSelector';
 import { Button } from './Button';
-
-const roleOptions: SelectOption<string>[] = Object.entries(ROLE_LABELS).map(
-  ([value, label]) => ({ value, label })
-);
 
 interface FieldErrors {
   username?: string;
@@ -49,6 +46,7 @@ export function UserModal({
   onClose,
   onSubmit,
 }: UserModalProps) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -56,6 +54,15 @@ export function UserModal({
   const [guildId, setGuildId] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [prevIsOpen, setPrevIsOpen] = useState(false);
+
+  const roleOptions: SelectOption<string>[] = useMemo(
+    () =>
+      USER_ROLE_KEYS.map((value) => ({
+        value,
+        label: t(`roles.${value}`),
+      })),
+    [t]
+  );
 
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
@@ -77,25 +84,25 @@ export function UserModal({
     const errors: FieldErrors = {};
 
     if (!username.trim()) {
-      errors.username = 'Укажите логин';
+      errors.username = t('users.errorUsername');
     }
 
     if (!fullName.trim()) {
-      errors.fullName = 'Укажите ФИО';
+      errors.fullName = t('users.errorFullName');
     }
 
     if (!isEditing && (!password || password.length < 4)) {
       errors.password = password
-        ? 'Пароль должен содержать минимум 4 символа'
-        : 'Укажите пароль';
+        ? t('users.errorPasswordShort')
+        : t('users.errorPasswordRequired');
     }
 
     if (!role) {
-      errors.role = 'Выберите роль';
+      errors.role = t('users.errorRole');
     }
 
     if (guildRequired && !guildId) {
-      errors.guildId = 'Для этой роли необходимо указать цех';
+      errors.guildId = t('users.errorGuild');
     }
 
     if (Object.keys(errors).length > 0) {
@@ -117,7 +124,7 @@ export function UserModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'Редактировать пользователя' : 'Новый пользователь'}
+      title={isEditing ? t('users.modalEditTitle') : t('users.modalCreateTitle')}
     >
       <div className="space-y-4">
         {error && (
@@ -128,37 +135,37 @@ export function UserModal({
 
         <TextInput
           id="user-username"
-          label="Логин"
+          label={t('users.labelLogin')}
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="Введите логин"
+          placeholder={t('users.placeholderLogin')}
           error={fieldErrors.username}
         />
 
         <TextInput
           id="user-fullName"
-          label="ФИО"
+          label={t('users.labelFullName')}
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          placeholder="Введите ФИО"
+          placeholder={t('users.placeholderFullName')}
           error={fieldErrors.fullName}
         />
 
         <TextInput
           id="user-password"
-          label="Пароль"
+          label={t('users.labelPassword')}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={isEditing ? '••••••••' : 'Введите пароль'}
+          placeholder={isEditing ? t('users.placeholderPasswordEdit') : t('users.placeholderPassword')}
           error={fieldErrors.password}
         />
 
         <div>
           <label className="ml-1.5 block text-sm font-medium text-gray-700 mb-1.5">
-            Роль
+            {t('users.labelRole')}
           </label>
           <Select
             value={role}
@@ -167,7 +174,7 @@ export function UserModal({
               if (v === 'PlanningDept') setGuildId(null);
             }}
             options={roleOptions}
-            placeholder="Выберите роль"
+            placeholder={t('users.placeholderRole')}
             className="w-full"
             disabled={isSelf}
           />
@@ -180,13 +187,13 @@ export function UserModal({
 
         <div>
           <label className="ml-1.5 block text-sm font-medium text-gray-700 mb-1.5">
-            Цех
+            {t('users.labelGuild')}
           </label>
           <Select<number>
             value={guildId}
             onChange={setGuildId}
             options={guilds.map((g) => ({ value: g.id, label: g.name }))}
-            placeholder={guildRequired ? 'Выберите цех' : '—'}
+            placeholder={guildRequired ? t('users.placeholderGuild') : t('users.placeholderGuildOptional')}
             className="w-full"
             disabled={!guildRequired}
           />
@@ -208,7 +215,7 @@ export function UserModal({
           disabled={isSubmitting}
           icon={<Save />}
         >
-          {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+          {isSubmitting ? t('common.saving') : t('common.save')}
         </Button>
 
         <Button
@@ -219,7 +226,7 @@ export function UserModal({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          Отмена
+          {t('common.cancel')}
         </Button>
       </div>
     </Modal>

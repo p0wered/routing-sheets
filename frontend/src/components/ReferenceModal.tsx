@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { Modal } from './Modal';
 import { TextInput } from './TextInput';
@@ -32,6 +33,7 @@ export function ReferenceModal({
   onClose,
   onSubmit,
 }: ReferenceModalProps) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [prevIsOpen, setPrevIsOpen] = useState(false);
@@ -52,7 +54,7 @@ export function ReferenceModal({
     const errors: Record<string, string> = {};
     for (const f of fields) {
       if (f.required !== false && !values[f.key]?.trim()) {
-        errors[f.key] = `Заполните поле «${f.label}»`;
+        errors[f.key] = t('referenceModal.fillField', { field: f.label });
       }
     }
 
@@ -100,7 +102,7 @@ export function ReferenceModal({
           disabled={isSubmitting}
           icon={<Save />}
         >
-          {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+          {isSubmitting ? t('common.saving') : t('common.save')}
         </Button>
         <Button
           type="button"
@@ -110,7 +112,7 @@ export function ReferenceModal({
           onClick={onClose}
           disabled={isSubmitting}
         >
-          Отмена
+          {t('common.cancel')}
         </Button>
       </div>
     </Modal>

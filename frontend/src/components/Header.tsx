@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { User } from '../types/auth';
 import { Menu } from 'lucide-react';
 import { DropdownList } from './DropdownList';
+import { LanguageToggle } from './LanguageToggle';
 
 interface RoutingHeaderProps {
   user: User;
@@ -11,6 +13,7 @@ interface RoutingHeaderProps {
 }
 
 export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -37,14 +40,14 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
         <div className="flex items-center justify-between h-18">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center text-sm font-bold">
-              МЛ
+              {t('nav.badgeShort')}
             </div>
             <span className="text-lg font-semibold text-gray-900">
-              Маршрутные листы
+              {t('nav.appName')}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="text-right">
               <p className="text-base font-medium text-gray-900">
                 {user.fullName}
@@ -68,10 +71,15 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
               {isMenuOpen && (
                 <DropdownList
                   className="right-0 w-52"
+                  header={
+                    <div className="flex items-center justify-between gap-2">
+                      <LanguageToggle />
+                    </div>
+                  }
                   items={[
                     {
                       key: 'home',
-                      label: 'Маршрутные листы',
+                      label: t('nav.routingSheets'),
                       onClick: () => {
                         setIsMenuOpen(false);
                         navigate('/');
@@ -79,7 +87,7 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
                     },
                     {
                       key: 'operations',
-                      label: 'Операции по цехам',
+                      label: t('nav.operationsByGuild'),
                       onClick: () => {
                         setIsMenuOpen(false);
                         navigate('/operations');
@@ -89,7 +97,7 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
                       ? [
                           {
                             key: 'references',
-                            label: 'Справочники',
+                            label: t('nav.references'),
                             onClick: () => {
                               setIsMenuOpen(false);
                               navigate('/references');
@@ -101,7 +109,7 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
                       ? [
                           {
                             key: 'users',
-                            label: 'Пользователи',
+                            label: t('nav.users'),
                             onClick: () => {
                               setIsMenuOpen(false);
                               navigate('/users');
@@ -111,7 +119,7 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
                       : []),
                     {
                       key: 'logout',
-                      label: 'Выйти',
+                      label: t('nav.logout'),
                       onClick: () => {
                         setIsMenuOpen(false);
                         onLogout();
@@ -127,4 +135,3 @@ export function RoutingHeader({ user, roleLabel, onLogout }: RoutingHeaderProps)
     </header>
   );
 }
-

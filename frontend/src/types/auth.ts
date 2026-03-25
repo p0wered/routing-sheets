@@ -17,8 +17,5 @@ export interface AuthResponse {
   user: User;
 }
 
-export const ROLE_LABELS: Record<string, string> = {
-  WorkshopChief: 'Начальник цеха',
-  WorkshopForeman: 'Мастер цеха',
-  PlanningDept: 'Плановый отдел',
-};
+/** Role keys sent by the API; labels come from i18n `roles.*`. */
+export const USER_ROLE_KEYS = ['WorkshopChief', 'WorkshopForeman', 'PlanningDept'] as const;
