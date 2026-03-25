@@ -17,6 +17,7 @@ import { Select } from '../components/DropdownSelector';
 import { MonthYearPicker } from '../components/MonthYearPicker';
 import { PlanStatusBadge } from '../components/PlanStatusBadge';
 import { SplitQuantityModal } from '../components/SplitQuantityModal';
+import { RoutingSheetReportModal } from '../components/RoutingSheetReportModal';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
@@ -51,6 +52,7 @@ import {
   ArrowDown,
   Zap,
   Lock,
+  Printer,
 } from 'lucide-react';
 
 type SortDirection = 'asc' | 'desc';
@@ -175,6 +177,8 @@ export default function RoutingSheetsPage() {
 
   // Close plan confirmation
   const [closingPlan, setClosingPlan] = useState<PlanPositionListItem | null>(null);
+
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   // Operation sorting
   const [opSortField, setOpSortField] = useState<OpSortField | null>(null);
@@ -459,6 +463,15 @@ export default function RoutingSheetsPage() {
                 <span className="font-semibold text-gray-900">{user.guildName}</span>
               </span>
             )}
+            <Button
+              type="button"
+              size="small"
+              color="secondary"
+              icon={<Printer className="w-4 h-4" />}
+              onClick={() => setReportModalOpen(true)}
+            >
+              {t('routingSheets.reportButton')}
+            </Button>
           </div>
         </section>
 
@@ -580,6 +593,15 @@ export default function RoutingSheetsPage() {
           )}
         </section>
       </main>
+
+      <RoutingSheetReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        sheetsForPicker={allRoutingSheets ?? []}
+        defaultMonth={selectedMonth}
+        defaultYear={selectedYear}
+        guildIdFilter={isPlanningDept ? selectedGuildId ?? undefined : undefined}
+      />
 
       {/* Generate RS confirmation */}
       {generatingPlan && (

@@ -12,6 +12,10 @@ export async function getRoutingSheets(params?: {
   planPositionId?: number;
   productItemId?: number;
   guildId?: number;
+  /** ISO 8601, фильтр по дате создания МЛ (включительно, сравнение с UTC на сервере) */
+  createdFrom?: string;
+  /** ISO 8601, верхняя граница даты создания МЛ (включительно) */
+  createdTo?: string;
 }) {
   const res = await apiClient.get<RoutingSheetListItem[]>('/RoutingSheets', { params });
   return res.data;

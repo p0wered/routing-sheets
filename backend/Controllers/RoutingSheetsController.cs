@@ -24,7 +24,9 @@ public class RoutingSheetsController : ControllerBase
     public async Task<ActionResult<IEnumerable<RoutingSheetListDto>>> GetAll(
         [FromQuery] int? planPositionId = null,
         [FromQuery] int? productItemId = null,
-        [FromQuery] int? guildId = null)
+        [FromQuery] int? guildId = null,
+        [FromQuery] DateTime? createdFrom = null,
+        [FromQuery] DateTime? createdTo = null)
     {
         var query = _context.RoutingSheets
             .Include(rs => rs.Status)
@@ -51,6 +53,12 @@ public class RoutingSheetsController : ControllerBase
 
         if (productItemId.HasValue)
             query = query.Where(rs => rs.ProductItemId == productItemId.Value);
+
+        if (createdFrom.HasValue)
+            query = query.Where(rs => rs.CreatedAt >= createdFrom.Value);
+
+        if (createdTo.HasValue)
+            query = query.Where(rs => rs.CreatedAt <= createdTo.Value);
 
         var sheets = await query
             .Select(rs => new RoutingSheetListDto(

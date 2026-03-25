@@ -13,6 +13,36 @@ export interface RoutingSheetListItem {
   unitName: string | null;
 }
 
+export interface ProductItem {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export interface RoutingSheetStatus {
+  id: number;
+  code: string;
+  name: string;
+}
+
+/** Позиция плана в ответе GET /RoutingSheets/:id */
+export interface PlanPositionInRoutingSheet {
+  id: number;
+  documentNumber: string;
+  documentDate: string;
+  planMonth: number;
+  planYear: number;
+  positionCode: string;
+  name: string;
+  productItemId: number;
+  quantityPlanned: number;
+  guildId: number;
+  statusId: number;
+  guildName: string | null;
+  statusName: string | null;
+  productItemName: string | null;
+}
+
 export interface RoutingSheetDetail {
   id: number;
   number: string;
@@ -24,19 +54,11 @@ export interface RoutingSheetDetail {
   quantity: number;
   createdAt: string;
   updatedAt: string | null;
+  planPosition?: PlanPositionInRoutingSheet | null;
+  productItem?: ProductItem | null;
+  unit?: { id: number; name: string } | null;
+  status?: RoutingSheetStatus | null;
   operations?: OperationDto[];
-}
-
-export interface ProductItem {
-  id: number;
-  name: string;
-  description: string | null;
-}
-
-export interface RoutingSheetStatus {
-  id: number;
-  code: string;
-  name: string;
 }
 
 export interface OperationStatus {
