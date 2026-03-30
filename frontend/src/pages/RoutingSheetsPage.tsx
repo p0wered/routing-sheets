@@ -257,6 +257,21 @@ export default function RoutingSheetsPage() {
     return map;
   }, [allRoutingSheets]);
 
+  /** МЛ только по планам выбранного в календаре месяца/года (для отчёта) */
+  const routingSheetsInSelectedPeriod = useMemo(() => {
+    if (!plans?.length || !allRoutingSheets) return [];
+    const planIds = new Set(plans.map((p) => p.id));
+    return allRoutingSheets.filter(
+      (rs) => rs.planPositionId != null && planIds.has(rs.planPositionId),
+    );
+  }, [plans, allRoutingSheets]);
+
+  const reportPeriodLabel = useMemo(() => {
+    const monthNames = t('months', { returnObjects: true }) as string[];
+    const name = monthNames[selectedMonth - 1] ?? '';
+    return `${name} ${selectedYear}`;
+  }, [t, selectedMonth, selectedYear]);
+
   // ─── Mutations ───
   const generateMutation = useMutation({
     mutationFn: (planPositionId: number) => generateRoutingSheet(planPositionId),
@@ -438,35 +453,38 @@ export default function RoutingSheetsPage() {
       <main className="mx-auto px-4 sm:px-6 py-6">
         {/* Toolbar: Month picker + Guild filter */}
         <section className="bg-white rounded-3xl shadow-lg/5 border border-gray-200 p-3 mb-3">
-          <div className="flex flex-wrap items-center gap-4">
-            <MonthYearPicker
-              month={selectedMonth}
-              year={selectedYear}
-              onChange={handleMonthChange}
-            />
-            {isPlanningDept && (
-              <Select<number>
-                className="h-full"
-                value={selectedGuildId}
-                onChange={(v) => {
-                  setSelectedGuildId(v);
-                  setExpandedPlanId(null);
-                  setExpandedSheetId(null);
-                }}
-                options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
-                placeholder={t('routingSheets.allGuilds')}
+          <div className="flex flex-wrap items-center gap-4 w-full">
+            <div className="flex flex-wrap items-center gap-4 min-w-0 flex-1">
+              <MonthYearPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={handleMonthChange}
               />
-            )}
-            {!isPlanningDept && user?.guildName && (
-              <span className="text-sm text-gray-600">
-                {t('common.guild')}:{' '}
-                <span className="font-semibold text-gray-900">{user.guildName}</span>
-              </span>
-            )}
+              {isPlanningDept && (
+                <Select<number>
+                  className="h-full"
+                  value={selectedGuildId}
+                  onChange={(v) => {
+                    setSelectedGuildId(v);
+                    setExpandedPlanId(null);
+                    setExpandedSheetId(null);
+                  }}
+                  options={guilds?.map((g) => ({ value: g.id, label: g.name })) ?? []}
+                  placeholder={t('routingSheets.allGuilds')}
+                />
+              )}
+              {!isPlanningDept && user?.guildName && (
+                <span className="text-sm text-gray-600">
+                  {t('common.guild')}:{' '}
+                  <span className="font-semibold text-gray-900">{user.guildName}</span>
+                </span>
+              )}
+            </div>
             <Button
               type="button"
               size="small"
-              color="secondary"
+              color="primary"
+              className="shrink-0 ms-auto"
               icon={<Printer className="w-4 h-4" />}
               onClick={() => setReportModalOpen(true)}
             >
@@ -597,10 +615,8 @@ export default function RoutingSheetsPage() {
       <RoutingSheetReportModal
         open={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
-        sheetsForPicker={allRoutingSheets ?? []}
-        defaultMonth={selectedMonth}
-        defaultYear={selectedYear}
-        guildIdFilter={isPlanningDept ? selectedGuildId ?? undefined : undefined}
+        sheetsInPlanPeriod={routingSheetsInSelectedPeriod}
+        periodLabel={reportPeriodLabel}
       />
 
       {/* Generate RS confirmation */}

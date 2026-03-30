@@ -202,8 +202,7 @@ export function openSingleRoutingSheetPdf(
 
 function buildPeriodDoc(
   items: RoutingSheetListItem[],
-  periodFrom: string,
-  periodTo: string,
+  periodDisplay: string,
   labels: PeriodPdfLabels,
   locale: string,
 ) {
@@ -240,7 +239,7 @@ function buildPeriodDoc(
     content: [
       { text: labels.title, style: 'header' },
       {
-        text: `${labels.periodLine}: ${formatDateOnly(periodFrom, locale)} — ${formatDateOnly(periodTo, locale)}`,
+        text: `${labels.periodLine}: ${periodDisplay}`,
         style: 'sub',
         margin: [0, 6, 0, 4],
       },
@@ -260,13 +259,13 @@ function buildPeriodDoc(
   };
 }
 
+/** periodDisplay — подпись периода планов (например «Февраль 2026»), как в календаре на странице */
 export function openPeriodRoutingSheetsPdf(
   items: RoutingSheetListItem[],
-  periodFromIso: string,
-  periodToIso: string,
+  periodDisplay: string,
   labels: PeriodPdfLabels,
   locale: string,
 ): void {
-  const doc = buildPeriodDoc(items, periodFromIso, periodToIso, labels, locale);
+  const doc = buildPeriodDoc(items, periodDisplay, labels, locale);
   pdfMake.createPdf(doc).open();
 }

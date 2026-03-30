@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from './Button';
 import { Select } from './DropdownSelector';
-import { getRoutingSheetById, getRoutingSheets } from '../api/routingSheets';
+import { getRoutingSheetById } from '../api/routingSheets';
 import type { RoutingSheetListItem } from '../types/routingSheet';
 import {
   openPeriodRoutingSheetsPdf,
@@ -14,68 +14,42 @@ import { toast, extractError } from '../utils/toast';
 
 type ReportMode = 'single' | 'period';
 
-function lastDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
-}
-
-function ymdToIsoUtcStart(dateStr: string): string {
-  return `${dateStr}T00:00:00.000Z`;
-}
-
-function ymdToIsoUtcEnd(dateStr: string): string {
-  return `${dateStr}T23:59:59.999Z`;
-}
-
 export interface RoutingSheetReportModalProps {
   open: boolean;
   onClose: () => void;
-  /** Маршрутные листы, уже отфильтрованные по цеху (как на странице) */
-  sheetsForPicker: RoutingSheetListItem[];
-  /** Границы периода по умолчанию (месяц/год с плана) */
-  defaultMonth: number;
-  defaultYear: number;
-  /** Для планового отдела — выбранный цех; иначе цех пользователя */
-  guildIdFilter?: number;
+  /** МЛ, привязанные к планам выбранного в календаре месяца/года */
+  sheetsInPlanPeriod: RoutingSheetListItem[];
+  /** Та же подпись, что у календаря (например «Февраль 2026») */
+  periodLabel: string;
 }
 
 export function RoutingSheetReportModal({
   open,
   onClose,
-  sheetsForPicker,
-  defaultMonth,
-  defaultYear,
-  guildIdFilter,
+  sheetsInPlanPeriod,
+  periodLabel,
 }: RoutingSheetReportModalProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith('en') ? 'en-US' : 'ru-RU';
 
   const [mode, setMode] = useState<ReportMode>('single');
   const [selectedSheetId, setSelectedSheetId] = useState<number | null>(null);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(false);
 
   const sortedSheets = useMemo(() => {
-    return [...sheetsForPicker].sort((a, b) =>
+    return [...sheetsInPlanPeriod].sort((a, b) =>
       a.number.localeCompare(b.number, undefined, { numeric: true }),
     );
-  }, [sheetsForPicker]);
+  }, [sheetsInPlanPeriod]);
 
   useEffect(() => {
     if (!open) return;
-    const y = defaultYear;
-    const m = defaultMonth;
-    const from = `${y}-${String(m).padStart(2, '0')}-01`;
-    const last = lastDayOfMonth(y, m);
-    const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-    setDateFrom(from);
-    setDateTo(to);
     setMode('single');
-    const sorted = [...sheetsForPicker].sort((a, b) =>
+    const sorted = [...sheetsInPlanPeriod].sort((a, b) =>
       a.number.localeCompare(b.number, undefined, { numeric: true }),
     );
     setSelectedSheetId(sorted[0]?.id ?? null);
-  }, [open, defaultMonth, defaultYear, sheetsForPicker]);
+  }, [open, sheetsInPlanPeriod]);
 
   const singleLabels: SingleSheetPdfLabels = useMemo(
     () => ({
@@ -109,7 +83,14 @@ export function RoutingSheetReportModal({
     [t],
   );
 
+  const noSheets = !sortedSheets.length;
+
   async function handleGenerate() {
+    if (noSheets) {
+      toast.error(t('routingSheets.reportEmptyList'));
+      return;
+    }
+
     if (mode === 'single') {
       if (selectedSheetId == null) {
         toast.error(t('routingSheets.reportEmptyList'));
@@ -128,32 +109,12 @@ export function RoutingSheetReportModal({
       return;
     }
 
-    if (!dateFrom || !dateTo) {
-      toast.error(t('routingSheets.reportInvalidPeriod'));
-      return;
-    }
-    if (dateFrom > dateTo) {
-      toast.error(t('routingSheets.reportInvalidPeriod'));
-      return;
-    }
-
     setLoading(true);
     try {
-      const createdFrom = ymdToIsoUtcStart(dateFrom);
-      const createdTo = ymdToIsoUtcEnd(dateTo);
-      const list = await getRoutingSheets({
-        createdFrom,
-        createdTo,
-        ...(guildIdFilter != null ? { guildId: guildIdFilter } : {}),
-      });
-      if (!list.length) {
-        toast.error(t('routingSheets.reportEmptyList'));
-        return;
-      }
       const periodLabels: PeriodPdfLabels = {
         title: t('routingSheets.reportPdf.period.title'),
         periodLine: t('routingSheets.reportPdf.period.periodLine'),
-        sheetCount: t('routingSheets.reportPdf.period.sheetCount', { count: list.length }),
+        sheetCount: t('routingSheets.reportPdf.period.sheetCount', { count: sortedSheets.length }),
         colNumber: t('routingSheets.reportPdf.period.colNumber'),
         colName: t('routingSheets.reportPdf.period.colName'),
         colProduct: t('routingSheets.reportPdf.period.colProduct'),
@@ -163,10 +124,8 @@ export function RoutingSheetReportModal({
         colCreated: t('routingSheets.reportPdf.period.colCreated'),
         emptyDash: t('routingSheets.reportPdf.period.emptyDash'),
       };
-      openPeriodRoutingSheetsPdf(list, createdFrom, createdTo, periodLabels, locale);
+      openPeriodRoutingSheetsPdf(sortedSheets, periodLabel, periodLabels, locale);
       onClose();
-    } catch (err) {
-      toast.error(extractError(err, t('routingSheets.toastSheetGenerateFailed')));
     } finally {
       setLoading(false);
     }
@@ -183,34 +142,37 @@ export function RoutingSheetReportModal({
         className="bg-white rounded-3xl shadow-xl/5 w-full max-w-md p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
           {t('routingSheets.reportModalTitle')}
         </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          {t('routingSheets.reportPeriodContext', { period: periodLabel })}
+        </p>
 
-        <div className="flex gap-4 mb-4 text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex flex-col gap-3 mb-4 text-sm">
+          <label className="flex items-start gap-2.5 cursor-pointer">
             <input
               type="radio"
               name="reportMode"
               checked={mode === 'single'}
               onChange={() => setMode('single')}
-              className="accent-primary"
+              className="accent-primary mt-0.5"
             />
-            {t('routingSheets.reportModeSingle')}
+            <span>{t('routingSheets.reportModeSingle')}</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-start gap-2.5 cursor-pointer">
             <input
               type="radio"
               name="reportMode"
               checked={mode === 'period'}
               onChange={() => setMode('period')}
-              className="accent-primary"
+              className="accent-primary mt-0.5"
             />
-            {t('routingSheets.reportModePeriod')}
+            <span>{t('routingSheets.reportModePeriod')}</span>
           </label>
         </div>
 
-        {mode === 'single' ? (
+        {mode === 'single' && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               {t('routingSheets.reportSelectSheet')}
@@ -224,35 +186,20 @@ export function RoutingSheetReportModal({
               }))}
               placeholder={t('common.selectValue')}
             />
-            {!sortedSheets.length && (
+            {noSheets && (
               <p className="text-xs text-amber-700 mt-2">{t('routingSheets.reportEmptyList')}</p>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('routingSheets.reportDateFrom')}
-              </label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {t('routingSheets.reportDateTo')}
-              </label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
-              />
-            </div>
-          </div>
+        )}
+
+        {mode === 'period' && !noSheets && (
+          <p className="text-sm text-gray-600 mb-6">
+            {t('routingSheets.reportAllSheetsHint', { count: sortedSheets.length })}
+          </p>
+        )}
+
+        {mode === 'period' && noSheets && (
+          <p className="text-xs text-amber-700 mb-6">{t('routingSheets.reportEmptyList')}</p>
         )}
 
         <div className="flex gap-3">
@@ -262,7 +209,7 @@ export function RoutingSheetReportModal({
             color="primary"
             className="flex-1"
             onClick={() => void handleGenerate()}
-            disabled={loading || (mode === 'single' && !sortedSheets.length)}
+            disabled={loading || noSheets}
           >
             {loading ? t('routingSheets.reportBuilding') : t('routingSheets.reportOpenPdf')}
           </Button>
