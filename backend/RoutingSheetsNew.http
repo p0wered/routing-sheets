@@ -1,4 +1,4 @@
-@baseUrl = https://localhost:7001
+@baseUrl = https://localhost:7050
 
 ### ===== СТАТУСЫ (только чтение) =====
 
