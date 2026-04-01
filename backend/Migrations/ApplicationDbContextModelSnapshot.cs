@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RoutingSheetsNew.Data;
 
@@ -16,24 +15,18 @@ namespace RoutingSheetsNew.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
 
             modelBuilder.Entity("RoutingSheetsNew.Models.Guild", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -61,47 +54,45 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("GuildId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("guild_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("OperationTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("operation_type_id");
 
                     b.Property<int?>("PerformerId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("performer_id");
 
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("RoutingSheetId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("routing_sheet_id");
 
                     b.Property<int>("SeqNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("seq_number");
 
                     b.Property<int?>("StatusId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status_id");
 
                     b.Property<decimal?>("Sum")
@@ -126,19 +117,17 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -175,14 +164,12 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -220,18 +207,16 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -280,36 +265,34 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("GuildId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("guild_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("OperationTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("operation_type_id");
 
                     b.Property<int>("PartId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("part_id");
 
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("SeqNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("seq_number");
 
                     b.HasKey("Id");
@@ -428,19 +411,17 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("full_name");
 
                     b.Property<string>("Role")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -471,9 +452,7 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("DocumentDate")
                         .HasColumnType("date")
@@ -482,42 +461,42 @@ namespace RoutingSheetsNew.Migrations
                     b.Property<string>("DocumentNumber")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("document_number");
 
                     b.Property<int>("GuildId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("guild_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("PlanMonth")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("plan_month");
 
                     b.Property<int>("PlanYear")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("plan_year");
 
                     b.Property<string>("PositionCode")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("position_code");
 
                     b.Property<int>("ProductItemId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("product_item_id");
 
                     b.Property<int>("QuantityPlanned")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("quantity_planned");
 
                     b.Property<int>("StatusId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status_id");
 
                     b.HasKey("Id");
@@ -637,19 +616,17 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -674,18 +651,16 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -716,20 +691,18 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("PartId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("part_id");
 
                     b.Property<int>("ProductItemId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("product_item_id");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -789,44 +762,42 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Number")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("PlanPositionId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("plan_position_id");
 
                     b.Property<int?>("ProductItemId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("product_item_id");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("StatusId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status_id");
 
                     b.Property<int?>("UnitId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("unit_id");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -848,19 +819,17 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -897,14 +866,12 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -932,32 +899,30 @@ namespace RoutingSheetsNew.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("GuildId")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("guild_id");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 

@@ -266,6 +266,11 @@ ServiceFabricBackup/
 *.ldf
 *.ndf
 
+# SQLite (локальная БД учебного проекта)
+backend/Data/*.db
+backend/Data/*.db-shm
+backend/Data/*.db-wal
+
 # Business Intelligence projects
 *.rdl.data
 *.bim.layout

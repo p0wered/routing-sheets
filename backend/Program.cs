@@ -8,9 +8,12 @@ using RoutingSheetsNew.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// Database (SQLite file under project ContentRoot / Data — path resolved so it is not tied to bin/)
+var sqliteConnectionString = ResolveSqliteConnectionString(
+    builder.Configuration.GetConnectionString("DefaultConnection")!,
+    builder.Environment.ContentRootPath);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(sqliteConnectionString));
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -151,3 +154,18 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+static string ResolveSqliteConnectionString(string connectionString, string contentRoot)
+{
+    const string prefix = "Data Source=";
+    if (!connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        return connectionString;
+    var relativePath = connectionString[prefix.Length..].Trim();
+    if (Path.IsPathRooted(relativePath))
+        return connectionString;
+    var fullPath = Path.GetFullPath(Path.Combine(contentRoot, relativePath));
+    var directory = Path.GetDirectoryName(fullPath);
+    if (!string.IsNullOrEmpty(directory))
+        Directory.CreateDirectory(directory);
+    return $"{prefix}{fullPath}";
+}

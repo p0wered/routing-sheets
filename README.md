@@ -2,7 +2,7 @@
 
 Веб-приложение для предприятия: планирование производства, **автоматическое формирование маршрутных листов (МЛ)** по составу изделия и технологическим операциям деталей, учёт операций по цехам, назначение исполнителей, смена статусов, разбиение МЛ и операций **по количеству**, управление пользователями и справочниками.
 
-Система состоит из **ASP.NET Core 8 Web API** (MS SQL Server, EF Core, JWT) и **React SPA** (Vite, TypeScript, Tailwind CSS 4).
+Система состоит из **ASP.NET Core 8 Web API** (SQLite, EF Core, JWT) и **React SPA** (Vite, TypeScript, Tailwind CSS 4).
 
 ---
 
@@ -51,7 +51,7 @@
   ASP.NET Core Web API
   ├── JWT Bearer + политики [Authorize] / [Authorize(Roles=...)]
   ├── Контроллеры (CRUD и бизнес-операции)
-  └── EF Core → MS SQL Server (RoutingSheetsDB)
+  └── EF Core → SQLite (`backend/Data/routing.db`)
 ```
 
 При старте приложения выполняется `Database.Migrate()` и при **пустой** таблице пользователей — начальное заполнение тестовых учётных записей.
@@ -75,7 +75,7 @@
 **Backend**
 
 - .NET 8, ASP.NET Core Web API  
-- Entity Framework Core 8 + провайдер SQL Server  
+- Entity Framework Core 8 + провайдер SQLite  
 - JWT (`Microsoft.AspNetCore.Authentication.JwtBearer`)  
 - BCrypt.Net-Next  
 - Swashbuckle (Swagger / OpenAPI)
@@ -99,7 +99,8 @@
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)  
 - [Node.js](https://nodejs.org/) (LTS, для сборки фронтенда)  
-- [Microsoft SQL Server](https://www.microsoft.com/sql-server) (локально или сетевой экземпляр; в `appsettings.json` по умолчанию указан конкретный инстанс разработчика — замените на свой)
+
+Отдельный сервер БД не нужен: используется файл SQLite. Для CLI миграций один раз установите [dotnet-ef](https://learn.microsoft.com/ef/core/cli/dotnet): `dotnet tool install --global dotnet-ef` (версия **8.x** под проект). Если команда `dotnet ef` не находится, добавьте в `PATH` каталог инструментов, например `export PATH="$PATH:$HOME/.dotnet/tools"` (zsh можно прописать в `~/.zprofile`).
 
 ---
 
@@ -109,10 +110,7 @@
 
 Файл: `backend/appsettings.json`, секция `ConnectionStrings:DefaultConnection`.
 
-Примеры строки подключения:
-
-- Windows Authentication: `Server=...;Database=RoutingSheetsDB;Trusted_Connection=True;TrustServerCertificate=True;`
-- SQL-логин: `Server=...;Database=...;User Id=...;Password=...;TrustServerCertificate=True;`
+По умолчанию: `Data Source=Data/routing.db` — при старте API путь разрешается относительно каталога проекта `backend/`, файл создаётся в `backend/Data/routing.db`. Чтобы использовать другой файл, укажите относительный путь от `backend/` или абсолютный `Data Source=/полный/путь/к файлу.db`.
 
 ### JWT
 
@@ -130,7 +128,7 @@
 
 ### 1. База данных
 
-Убедитесь, что SQL Server доступен по строке подключения. При первом запуске API база создаётся/обновляется миграциями автоматически.
+Ничего настраивать не нужно: при первом запуске API файл SQLite создаётся автоматически, схема применяется через `Database.Migrate()`.
 
 ### 2. Backend
 
@@ -139,14 +137,16 @@ cd backend
 dotnet run
 ```
 
-Профиль по умолчанию в `backend/Properties/launchSettings.json` для **https**:
+В `backend/Properties/launchSettings.json` два профиля:
 
-- **HTTPS:** `https://localhost:7050` (Swagger: `/swagger`)  
-- **HTTP:** `http://localhost:5145`
+- **`http` (по умолчанию при `dotnet run`):** только `http://localhost:5145` — с ним совпадает прокси Vite в `vite.config.ts`.  
+- **`https`:** `https://localhost:7050` и тот же HTTP-порт — запуск: `dotnet run --launch-profile https`; тогда в Vite укажите `target: 'https://localhost:7050'` и `secure: false`.
 
-Если порт занят, измените `applicationUrl` в `launchSettings.json`.
+Swagger: `/swagger` на том порту, на котором слушает API.
 
-Доверие к dev-сертификату (при необходимости):
+Если порт занят, измените `applicationUrl` в `launchSettings.json` и `vite.config.ts`.
+
+Доверие к dev-сертификату (для профиля **https**):
 
 ```bash
 dotnet dev-certs https --trust
@@ -162,14 +162,13 @@ npm run dev
 
 Приложение: `http://localhost:5173`.
 
-В `frontend/vite.config.ts` запросы `/api` проксируются на **`https://localhost:7050`**. Если вы изменили порт API, обновите `server.proxy['/api'].target` в Vite.
+В `frontend/vite.config.ts` запросы `/api` проксируются на **`http://localhost:5145`** (профиль `http`). Если переключили API на другой URL/порт, обновите `server.proxy['/api'].target`.
 
 ### Порядок
 
-1. SQL Server  
-2. `dotnet run` в `backend/`  
-3. `npm run dev` в `frontend/`  
-4. Браузер → `http://localhost:5173`
+1. `dotnet run` в `backend/`  
+2. `npm run dev` в `frontend/`  
+3. Браузер → `http://localhost:5173`
 
 ---
 
@@ -279,7 +278,7 @@ dotnet ef migrations add ИмяМиграции
 dotnet ef database update
 ```
 
-Пакет `Microsoft.EntityFrameworkCore.Design` уже подключён в `.csproj` для работы CLI.
+Пакет `Microsoft.EntityFrameworkCore.Design` уже подключён в `.csproj` для работы CLI. Команда `dotnet ef` идёт из глобального инструмента `dotnet-ef` (см. [Требования](#требования)).
 
 ---
 
@@ -293,17 +292,17 @@ dotnet ef database update
 
 ## Подсказки
 
-- В **`appsettings.json`** часто остаётся машинно-специфичная строка подключения к SQL Server — замените её под свою среду.  
+- При смене пути к файлу БД обновите **`ConnectionStrings:DefaultConnection`** в `appsettings.json` или `appsettings.Development.json`.  
 - Если измените HTTPS-порт API в **`backend/Properties/launchSettings.json`**, обновите **`frontend/vite.config.ts`** (прокси на `/api`) и переменную **`@baseUrl`** в **`backend/RoutingSheetsNew.http`**.
 
 ---
 
 ## Устранение неполадок
 
-- **Не подключается к SQL Server** — проверьте имя инстанса, TCP, firewall, права пользователя на создание БД.  
+- **Ошибки SQLite / миграций** — удалите повреждённый `backend/Data/routing.db` (и при необходимости `-shm`/`-wal`) и перезапустите API; убедитесь, что каталог `backend/Data/` доступен на запись.  
 - **CORS errors** — origin фронтенда должен совпадать с политикой в `Program.cs`.  
 - **401 после входа** — проверьте время на машине (JWT lifetime), совпадение Issuer/Audience/Key.  
-- **Прокси Vite не достучится до API** — сертификат HTTPS (`secure: false` уже стоит); убедитесь, что API слушает тот же порт, что в `vite.config.ts`.
+- **Прокси Vite (`ECONNREFUSED`)** — сначала запустите API (`dotnet run` в `backend/`). Убедитесь, что `vite.config.ts` указывает на тот же порт, что и профиль запуска: по умолчанию **HTTP 5145**, не 7050.
 
 ---
 

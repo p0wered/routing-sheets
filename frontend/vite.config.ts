@@ -7,9 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://localhost:7050',
+        // Согласовано с профилем по умолчанию `dotnet run` (http в launchSettings.json → порт 5145).
+        // Для HTTPS: `dotnet run --launch-profile https` и target `https://localhost:7050` + secure: false.
+        target: 'http://localhost:5145',
         changeOrigin: true,
-        secure: false,
       },
     },
   },
