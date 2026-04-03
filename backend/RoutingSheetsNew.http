@@ -71,28 +71,6 @@ Content-Type: application/json
 DELETE {{baseUrl}}/api/Guilds/1
 
 
-### ===== ТИПЫ ОПЕРАЦИЙ =====
-
-### Получить все типы операций
-GET {{baseUrl}}/api/OperationTypes
-
-### Создать тип операции
-POST {{baseUrl}}/api/OperationTypes
-Content-Type: application/json
-
-{
-  "name": "Сборка"
-}
-
-### Обновить тип операции
-PUT {{baseUrl}}/api/OperationTypes/1
-Content-Type: application/json
-
-{
-  "name": "Сварка"
-}
-
-
 ### ===== ИСПОЛНИТЕЛИ =====
 
 ### Получить всех исполнителей
@@ -171,32 +149,6 @@ GET {{baseUrl}}/api/RoutingSheets?productItemId=1
 ### Получить маршрутный лист по ID (с операциями)
 GET {{baseUrl}}/api/RoutingSheets/1
 
-### Создать маршрутный лист вручную
-POST {{baseUrl}}/api/RoutingSheets
-Content-Type: application/json
-
-{
-  "number": "МЛ-001",
-  "name": "Маршрутный лист для детали А",
-  "planPositionId": 1,
-  "productItemId": 1,
-  "unitId": 1,
-  "quantity": 50
-}
-
-### Обновить маршрутный лист
-PUT {{baseUrl}}/api/RoutingSheets/1
-Content-Type: application/json
-
-{
-  "number": "МЛ-001-UPD",
-  "name": "Маршрутный лист (обновлен)",
-  "planPositionId": 1,
-  "productItemId": 1,
-  "unitId": 1,
-  "quantity": 75
-}
-
 ### Изменить статус МЛ (1=Черновик, 2=Активен, 3=Завершен, 4=Отменен)
 PATCH {{baseUrl}}/api/RoutingSheets/1/status
 Content-Type: application/json
@@ -239,40 +191,6 @@ GET {{baseUrl}}/api/Operations/by-guild/1
 
 ### Получить операцию по ID
 GET {{baseUrl}}/api/Operations/1
-
-### Создать операцию в МЛ
-POST {{baseUrl}}/api/Operations
-Content-Type: application/json
-
-{
-  "routingSheetId": 1,
-  "seqNumber": 1,
-  "code": "OP-001",
-  "name": "Заготовка",
-  "statusId": 1,
-  "guildId": 1,
-  "operationTypeId": 1,
-  "performerId": null,
-  "price": 100.50,
-  "sum": 5025.00,
-  "quantity": 50
-}
-
-### Обновить операцию
-PUT {{baseUrl}}/api/Operations/1
-Content-Type: application/json
-
-{
-  "seqNumber": 1,
-  "code": "OP-001-UPD",
-  "name": "Заготовка (обновлено)",
-  "statusId": 2,
-  "guildId": 1,
-  "operationTypeId": 1,
-  "price": 150.00,
-  "sum": 7500.00,
-  "quantity": 50
-}
 
 ### Назначить исполнителя на операцию
 PATCH {{baseUrl}}/api/Operations/1/assign-performer

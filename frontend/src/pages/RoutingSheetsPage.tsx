@@ -61,12 +61,10 @@ type OpSortField =
   | 'seqNumber'
   | 'code'
   | 'name'
-  | 'operationTypeName'
   | 'guildName'
   | 'performerName'
   | 'quantity'
   | 'price'
-  | 'sum'
   | 'statusName';
 
 function compareFieldValues(a: unknown, b: unknown, locale: string): number {
@@ -1066,12 +1064,13 @@ function PlanRow({
                                       <SortTh field="seqNumber" label={t('common.numberSign')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} className="w-10" />
                                       <SortTh field="code" label={t('common.code')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="name" label={t('common.name')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="operationTypeName" label={t('common.type')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="guildName" label={t('common.guild')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="performerName" label={t('common.performer')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="quantity" label={t('common.quantityShort')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
                                       <SortTh field="price" label={t('common.price')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
-                                      <SortTh field="sum" label={t('common.sum')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
+                                      <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
+                                        {t('common.sum')}
+                                      </th>
                                       <SortTh field="statusName" label={t('common.status')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
                                       <th className="px-4 py-2.5 font-semibold text-gray-600 text-right">
                                         {t('common.actions')}
@@ -1097,9 +1096,6 @@ function PlanRow({
                                           </td>
                                           <td className="px-4 py-3 text-gray-900 font-medium max-w-[160px] truncate">
                                             {op.name}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                            {op.operationTypeName ?? '—'}
                                           </td>
                                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                                             {op.guildName ?? '—'}
@@ -1128,7 +1124,7 @@ function PlanRow({
                                             {op.price != null ? op.price.toFixed(2) : '—'}
                                           </td>
                                           <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
-                                            {op.sum != null ? op.sum.toFixed(2) : '—'}
+                                            {op.price != null ? (op.price * op.quantity).toFixed(2) : '—'}
                                           </td>
                                           <td className="px-4 py-3 text-center whitespace-nowrap">
                                             <OpStatusBadge

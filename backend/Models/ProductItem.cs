@@ -21,7 +21,5 @@ public class ProductItem
 
     // Navigation properties
     public virtual ICollection<PlanPosition> PlanPositions { get; set; } = new List<PlanPosition>();
-    public virtual ICollection<RoutingSheet> RoutingSheets { get; set; } = new List<RoutingSheet>();
     public virtual ICollection<ProductPart> ProductParts { get; set; } = new List<ProductPart>();
 }
-

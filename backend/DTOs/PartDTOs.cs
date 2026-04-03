@@ -6,11 +6,7 @@ public record PartOperationDto(
     int SeqNumber,
     string Name,
     string? Code,
-    int? OperationTypeId,
-    int? GuildId,
-    decimal? Price,
-    string? OperationTypeName,
-    string? GuildName);
+    decimal? Price);
 
 public record PartDto(
     int Id,

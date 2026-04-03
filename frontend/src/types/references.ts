@@ -18,4 +18,4 @@ export interface CreatePerformer {
   role?: string | null;
 }
 
-export type ReferenceTab = 'units' | 'guilds' | 'operationTypes' | 'performers';
+export type ReferenceTab = 'units' | 'guilds' | 'performers';

@@ -71,7 +71,6 @@ export function RoutingSheetReportModal({
       colSeq: t('routingSheets.reportPdf.single.colSeq'),
       colCode: t('routingSheets.reportPdf.single.colCode'),
       colName: t('routingSheets.reportPdf.single.colName'),
-      colType: t('routingSheets.reportPdf.single.colType'),
       colGuild: t('routingSheets.reportPdf.single.colGuild'),
       colQty: t('routingSheets.reportPdf.single.colQty'),
       colPrice: t('routingSheets.reportPdf.single.colPrice'),

@@ -26,17 +26,15 @@ public class OperationsController : ControllerBase
     {
         var query = _context.Operations
             .Include(o => o.Status)
-            .Include(o => o.Guild)
-            .Include(o => o.OperationType)
             .Include(o => o.Performer)
-            .Include(o => o.RoutingSheet)
+            .Include(o => o.RoutingSheet).ThenInclude(rs => rs!.PlanPosition).ThenInclude(pp => pp!.Guild)
             .AsQueryable();
 
         if (routingSheetId.HasValue)
             query = query.Where(o => o.RoutingSheetId == routingSheetId.Value);
 
         if (guildId.HasValue)
-            query = query.Where(o => o.GuildId == guildId.Value);
+            query = query.Where(o => o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.GuildId == guildId.Value);
 
         var operations = await query
             .OrderBy(o => o.RoutingSheetId)
@@ -48,15 +46,11 @@ public class OperationsController : ControllerBase
                 o.Code,
                 o.Name,
                 o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
                 o.PerformerId,
                 o.Price,
-                o.Sum,
                 o.Quantity,
                 o.Status != null ? o.Status.Name : null,
-                o.Guild != null ? o.Guild.Name : null,
-                o.OperationType != null ? o.OperationType.Name : null,
+                o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.Guild != null ? o.RoutingSheet.PlanPosition.Guild.Name : null,
                 o.Performer != null ? o.Performer.FullName : null,
                 o.RoutingSheet != null ? o.RoutingSheet.Number : null))
             .ToListAsync();
@@ -73,10 +67,8 @@ public class OperationsController : ControllerBase
 
         var operations = await _context.Operations
             .Include(o => o.Status)
-            .Include(o => o.Guild)
-            .Include(o => o.OperationType)
             .Include(o => o.Performer)
-            .Include(o => o.RoutingSheet)
+            .Include(o => o.RoutingSheet).ThenInclude(rs => rs!.PlanPosition).ThenInclude(pp => pp!.Guild)
             .Where(o => o.RoutingSheetId == routingSheetId)
             .OrderBy(o => o.SeqNumber)
             .Select(o => new OperationListDto(
@@ -86,15 +78,11 @@ public class OperationsController : ControllerBase
                 o.Code,
                 o.Name,
                 o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
                 o.PerformerId,
                 o.Price,
-                o.Sum,
                 o.Quantity,
                 o.Status != null ? o.Status.Name : null,
-                o.Guild != null ? o.Guild.Name : null,
-                o.OperationType != null ? o.OperationType.Name : null,
+                o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.Guild != null ? o.RoutingSheet.PlanPosition.Guild.Name : null,
                 o.Performer != null ? o.Performer.FullName : null,
                 o.RoutingSheet != null ? o.RoutingSheet.Number : null))
             .ToListAsync();
@@ -111,11 +99,9 @@ public class OperationsController : ControllerBase
 
         var operations = await _context.Operations
             .Include(o => o.Status)
-            .Include(o => o.Guild)
-            .Include(o => o.OperationType)
             .Include(o => o.Performer)
-            .Include(o => o.RoutingSheet)
-            .Where(o => o.GuildId == guildId)
+            .Include(o => o.RoutingSheet).ThenInclude(rs => rs!.PlanPosition).ThenInclude(pp => pp!.Guild)
+            .Where(o => o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.GuildId == guildId)
             .OrderBy(o => o.RoutingSheetId)
             .ThenBy(o => o.SeqNumber)
             .Select(o => new OperationListDto(
@@ -125,15 +111,11 @@ public class OperationsController : ControllerBase
                 o.Code,
                 o.Name,
                 o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
                 o.PerformerId,
                 o.Price,
-                o.Sum,
                 o.Quantity,
                 o.Status != null ? o.Status.Name : null,
-                o.Guild != null ? o.Guild.Name : null,
-                o.OperationType != null ? o.OperationType.Name : null,
+                o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.Guild != null ? o.RoutingSheet.PlanPosition.Guild.Name : null,
                 o.Performer != null ? o.Performer.FullName : null,
                 o.RoutingSheet != null ? o.RoutingSheet.Number : null))
             .ToListAsync();
@@ -146,9 +128,8 @@ public class OperationsController : ControllerBase
     {
         var operation = await _context.Operations
             .Include(o => o.Status)
-            .Include(o => o.Guild)
-            .Include(o => o.OperationType)
             .Include(o => o.Performer)
+            .Include(o => o.RoutingSheet).ThenInclude(rs => rs!.PlanPosition).ThenInclude(pp => pp!.Guild)
             .Where(o => o.Id == id)
             .Select(o => new OperationDto(
                 o.Id,
@@ -157,15 +138,13 @@ public class OperationsController : ControllerBase
                 o.Code,
                 o.Name,
                 o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
                 o.PerformerId,
                 o.Price,
-                o.Sum,
                 o.Quantity,
                 o.Status != null ? new OperationStatusDto(o.Status.Id, o.Status.Code, o.Status.Name) : null,
-                o.Guild != null ? new GuildDto(o.Guild.Id, o.Guild.Name) : null,
-                o.OperationType != null ? new OperationTypeDto(o.OperationType.Id, o.OperationType.Name) : null,
+                o.RoutingSheet != null && o.RoutingSheet.PlanPosition != null && o.RoutingSheet.PlanPosition.Guild != null
+                    ? new GuildDto(o.RoutingSheet.PlanPosition.Guild.Id, o.RoutingSheet.PlanPosition.Guild.Name)
+                    : null,
                 o.Performer != null ? new PerformerDto(o.Performer.Id, o.Performer.FullName, o.Performer.Role) : null))
             .FirstOrDefaultAsync();
 
@@ -237,7 +216,6 @@ public class OperationsController : ControllerBase
         if (dto.SplitQuantity >= operation.Quantity)
             return BadRequest("Количество для отделения должно быть меньше текущего количества операции");
 
-        // Find max seq number in the same routing sheet
         var maxSeq = await _context.Operations
             .Where(o => o.RoutingSheetId == operation.RoutingSheetId)
             .MaxAsync(o => o.SeqNumber);
@@ -245,27 +223,21 @@ public class OperationsController : ControllerBase
         var newQuantity = dto.SplitQuantity;
         var remainingQuantity = operation.Quantity - newQuantity;
 
-        // Create new operation
         var newOperation = new Operation
         {
             RoutingSheetId = operation.RoutingSheetId,
             SeqNumber = maxSeq + 1,
             Name = operation.Name,
             Code = operation.Code,
-            OperationTypeId = operation.OperationTypeId,
-            GuildId = operation.GuildId,
             PerformerId = null,
             Price = operation.Price,
             Quantity = newQuantity,
-            Sum = operation.Price.HasValue ? operation.Price.Value * newQuantity : null,
             StatusId = operation.StatusId
         };
 
         _context.Operations.Add(newOperation);
 
-        // Update original
         operation.Quantity = remainingQuantity;
-        operation.Sum = operation.Price.HasValue ? operation.Price.Value * remainingQuantity : null;
 
         await _context.SaveChangesAsync();
 

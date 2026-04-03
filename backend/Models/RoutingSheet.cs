@@ -23,9 +23,6 @@ public class RoutingSheet
     [Column("plan_position_id")]
     public int? PlanPositionId { get; set; }
 
-    [Column("product_item_id")]
-    public int? ProductItemId { get; set; }
-
     [Column("part_id")]
     public int? PartId { get; set; }
 
@@ -44,9 +41,6 @@ public class RoutingSheet
     // Navigation properties
     [ForeignKey(nameof(PlanPositionId))]
     public virtual PlanPosition? PlanPosition { get; set; }
-
-    [ForeignKey(nameof(ProductItemId))]
-    public virtual ProductItem? ProductItem { get; set; }
 
     [ForeignKey(nameof(PartId))]
     public virtual Part? Part { get; set; }

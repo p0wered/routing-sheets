@@ -28,20 +28,11 @@ public class Operation
     [Column("status_id")]
     public int? StatusId { get; set; }
 
-    [Column("guild_id")]
-    public int? GuildId { get; set; }
-
-    [Column("operation_type_id")]
-    public int? OperationTypeId { get; set; }
-
     [Column("performer_id")]
     public int? PerformerId { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]
     public decimal? Price { get; set; }
-
-    [Column(TypeName = "decimal(18,2)")]
-    public decimal? Sum { get; set; }
 
     public int Quantity { get; set; }
 
@@ -52,13 +43,6 @@ public class Operation
     [ForeignKey(nameof(StatusId))]
     public virtual OperationStatus? Status { get; set; }
 
-    [ForeignKey(nameof(GuildId))]
-    public virtual Guild? Guild { get; set; }
-
-    [ForeignKey(nameof(OperationTypeId))]
-    public virtual OperationType? OperationType { get; set; }
-
     [ForeignKey(nameof(PerformerId))]
     public virtual Performer? Performer { get; set; }
 }
-

@@ -26,10 +26,6 @@ public class ProductPartsController : ControllerBase
             .Include(pp => pp.ProductItem)
             .Include(pp => pp.Part)
                 .ThenInclude(p => p!.PartOperations)
-                    .ThenInclude(po => po.OperationType)
-            .Include(pp => pp.Part)
-                .ThenInclude(p => p!.PartOperations)
-                    .ThenInclude(po => po.Guild)
             .AsQueryable();
 
         if (productItemId.HasValue)
@@ -54,11 +50,7 @@ public class ProductPartsController : ControllerBase
                             po.SeqNumber,
                             po.Name,
                             po.Code,
-                            po.OperationTypeId,
-                            po.GuildId,
-                            po.Price,
-                            po.OperationType != null ? po.OperationType.Name : null,
-                            po.Guild != null ? po.Guild.Name : null))
+                            po.Price))
                         .ToList()
                     : null))
             .ToListAsync();

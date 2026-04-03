@@ -22,7 +22,6 @@ function namedCrud(basePath: string) {
 
 export const unitsApi = namedCrud('/Units');
 export const guildsApi = namedCrud('/Guilds');
-export const operationTypesApi = namedCrud('/OperationTypes');
 
 export const performersApi = {
   getAll: async (): Promise<Performer[]> => {

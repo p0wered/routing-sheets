@@ -31,13 +31,11 @@ public class RoutingSheetsController : ControllerBase
     {
         var query = _context.RoutingSheets
             .Include(rs => rs.Status)
-            .Include(rs => rs.PlanPosition)
-            .Include(rs => rs.ProductItem)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
             .Include(rs => rs.Part)
             .Include(rs => rs.Unit)
             .AsQueryable();
 
-        // Auto-filter by guild for WorkshopChief/WorkshopForeman
         var userGuildId = GetCurrentUserGuildId();
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
@@ -54,7 +52,7 @@ public class RoutingSheetsController : ControllerBase
             query = query.Where(rs => rs.PlanPositionId == planPositionId.Value);
 
         if (productItemId.HasValue)
-            query = query.Where(rs => rs.ProductItemId == productItemId.Value);
+            query = query.Where(rs => rs.PlanPosition != null && rs.PlanPosition.ProductItemId == productItemId.Value);
 
         if (partId.HasValue)
             query = query.Where(rs => rs.PartId == partId.Value);
@@ -71,14 +69,13 @@ public class RoutingSheetsController : ControllerBase
                 rs.Number,
                 rs.Name,
                 rs.PlanPositionId,
-                rs.ProductItemId,
                 rs.PartId,
                 rs.StatusId,
                 rs.Quantity,
                 rs.CreatedAt,
                 rs.Status != null ? rs.Status.Name : null,
                 rs.PlanPosition != null ? rs.PlanPosition.Name : null,
-                rs.ProductItem != null ? rs.ProductItem.Name : null,
+                rs.PlanPosition != null && rs.PlanPosition.ProductItem != null ? rs.PlanPosition.ProductItem.Name : null,
                 rs.Part != null ? rs.Part.Name : null,
                 rs.Unit != null ? rs.Unit.Name : null))
             .ToListAsync();
@@ -94,12 +91,9 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Guild)
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Status)
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
-            .Include(rs => rs.ProductItem)
             .Include(rs => rs.Part)
             .Include(rs => rs.Unit)
             .Include(rs => rs.Operations).ThenInclude(o => o.Status)
-            .Include(rs => rs.Operations).ThenInclude(o => o.Guild)
-            .Include(rs => rs.Operations).ThenInclude(o => o.OperationType)
             .Include(rs => rs.Operations).ThenInclude(o => o.Performer)
             .Where(rs => rs.Id == id)
             .FirstOrDefaultAsync();
@@ -123,7 +117,7 @@ public class RoutingSheetsController : ControllerBase
         if (planPosition == null)
             return NotFound("Позиция плана не найдена");
 
-        if (planPosition.StatusId != 1) // not OPEN
+        if (planPosition.StatusId != 1)
             return BadRequest("План должен быть в статусе «Открыт»");
 
         var existingSheet = await _context.RoutingSheets
@@ -131,13 +125,11 @@ public class RoutingSheetsController : ControllerBase
         if (existingSheet)
             return BadRequest("Для этого плана уже сформированы маршрутные листы");
 
-        // Check guild access for WorkshopChief
         var userGuildId = GetCurrentUserGuildId();
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
         if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue && planPosition.GuildId != userGuildId.Value)
             return Forbid();
 
-        // Get product composition with part operations
         var productParts = await _context.ProductParts
             .Include(pp => pp.Part)
                 .ThenInclude(p => p!.PartOperations)
@@ -164,7 +156,7 @@ public class RoutingSheetsController : ControllerBase
 
             var detailQuantity = productPart.Quantity * planPosition.QuantityPlanned;
             var operations = new List<Operation>();
-            int seqNumber = 1;
+            var seqNumber = 1;
 
             foreach (var partOp in partOperations)
             {
@@ -173,12 +165,9 @@ public class RoutingSheetsController : ControllerBase
                     SeqNumber = seqNumber++,
                     Name = partOp.Name,
                     Code = partOp.Code,
-                    OperationTypeId = partOp.OperationTypeId,
-                    GuildId = partOp.GuildId,
                     Price = partOp.Price,
                     Quantity = detailQuantity,
-                    Sum = partOp.Price.HasValue ? partOp.Price.Value * detailQuantity : null,
-                    StatusId = 1 // PENDING
+                    StatusId = 1
                 });
             }
 
@@ -189,10 +178,9 @@ public class RoutingSheetsController : ControllerBase
                 Number = number,
                 Name = $"МЛ на деталь {productPart.Part.Name}",
                 PlanPositionId = planPositionId,
-                ProductItemId = planPosition.ProductItemId,
                 PartId = productPart.PartId,
-                UnitId = 1, // шт.
-                StatusId = 1, // DRAFT
+                UnitId = 1,
+                StatusId = 1,
                 Quantity = detailQuantity,
                 CreatedAt = DateTime.UtcNow,
                 Operations = operations
@@ -208,12 +196,9 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Guild)
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Status)
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
-            .Include(rs => rs.ProductItem)
             .Include(rs => rs.Part)
             .Include(rs => rs.Unit)
             .Include(rs => rs.Operations).ThenInclude(o => o.Status)
-            .Include(rs => rs.Operations).ThenInclude(o => o.Guild)
-            .Include(rs => rs.Operations).ThenInclude(o => o.OperationType)
             .Include(rs => rs.Operations).ThenInclude(o => o.Performer)
             .Where(rs => createdSheetIds.Contains(rs.Id))
             .OrderBy(rs => rs.Id)
@@ -236,7 +221,6 @@ public class RoutingSheetsController : ControllerBase
         if (!statusExists)
             return BadRequest("Указанный статус не найден");
 
-        // Check guild access for WorkshopChief
         var userGuildId = GetCurrentUserGuildId();
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
         if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue
@@ -269,7 +253,6 @@ public class RoutingSheetsController : ControllerBase
         if (dto.SplitQuantity >= sourceSheet.Quantity)
             return BadRequest("Количество для отделения должно быть меньше текущего количества МЛ");
 
-        // Check guild access for WorkshopChief
         var userGuildId = GetCurrentUserGuildId();
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
         if (userRole == UserRoles.WorkshopChief && userGuildId.HasValue
@@ -278,7 +261,6 @@ public class RoutingSheetsController : ControllerBase
 
         var originalQuantity = sourceSheet.Quantity;
 
-        // Validate that all operations can be split into whole numbers
         foreach (var op in sourceSheet.Operations)
         {
             var newOpQty = op.Quantity * dto.SplitQuantity;
@@ -287,8 +269,6 @@ public class RoutingSheetsController : ControllerBase
         }
 
         var remainingQuantity = originalQuantity - dto.SplitQuantity;
-
-        // Generate number for new sheet
         var newNumber = await GenerateRoutingSheetNumber();
 
         var newSheet = new RoutingSheet
@@ -296,10 +276,9 @@ public class RoutingSheetsController : ControllerBase
             Number = newNumber,
             Name = sourceSheet.Name,
             PlanPositionId = sourceSheet.PlanPositionId,
-            ProductItemId = sourceSheet.ProductItemId,
             PartId = sourceSheet.PartId,
             UnitId = sourceSheet.UnitId,
-            StatusId = 1, // DRAFT
+            StatusId = 1,
             Quantity = dto.SplitQuantity,
             CreatedAt = DateTime.UtcNow
         };
@@ -307,33 +286,26 @@ public class RoutingSheetsController : ControllerBase
         _context.RoutingSheets.Add(newSheet);
         await _context.SaveChangesAsync();
 
-        // Split operations proportionally
-        int seqNumber = 1;
+        var seqNumber = 1;
         foreach (var op in sourceSheet.Operations.OrderBy(o => o.SeqNumber))
         {
             var newOpQuantity = op.Quantity * dto.SplitQuantity / originalQuantity;
             var remainingOpQuantity = op.Quantity - newOpQuantity;
 
-            // Create copy in new sheet
             var newOp = new Operation
             {
                 RoutingSheetId = newSheet.Id,
                 SeqNumber = seqNumber++,
                 Name = op.Name,
                 Code = op.Code,
-                OperationTypeId = op.OperationTypeId,
-                GuildId = op.GuildId,
                 PerformerId = null,
                 Price = op.Price,
                 Quantity = newOpQuantity,
-                Sum = op.Price.HasValue ? op.Price.Value * newOpQuantity : null,
                 StatusId = op.StatusId
             };
             _context.Operations.Add(newOp);
 
-            // Update original
             op.Quantity = remainingOpQuantity;
-            op.Sum = op.Price.HasValue ? op.Price.Value * remainingOpQuantity : null;
         }
 
         sourceSheet.Quantity = remainingQuantity;
@@ -363,10 +335,10 @@ public class RoutingSheetsController : ControllerBase
             .Select(rs => rs.Number)
             .FirstOrDefaultAsync();
 
-        int nextSeq = 1;
+        var nextSeq = 1;
         if (lastNumber != null)
         {
-            var suffix = lastNumber.Substring(prefix.Length);
+            var suffix = lastNumber[prefix.Length..];
             if (int.TryParse(suffix, out var lastSeq))
                 nextSeq = lastSeq + 1;
         }
@@ -381,7 +353,6 @@ public class RoutingSheetsController : ControllerBase
             sheet.Number,
             sheet.Name,
             sheet.PlanPositionId,
-            sheet.ProductItemId,
             sheet.PartId,
             sheet.UnitId,
             sheet.StatusId,
@@ -405,8 +376,11 @@ public class RoutingSheetsController : ControllerBase
                     sheet.PlanPosition.Status?.Name,
                     sheet.PlanPosition.ProductItem?.Name)
                 : null,
-            sheet.ProductItem != null
-                ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description)
+            sheet.PlanPosition?.ProductItem != null
+                ? new ProductItemDto(
+                    sheet.PlanPosition.ProductItem.Id,
+                    sheet.PlanPosition.ProductItem.Name,
+                    sheet.PlanPosition.ProductItem.Description)
                 : null,
             sheet.Part != null
                 ? new PartRefDto(sheet.Part.Id, sheet.Part.Name, sheet.Part.Description)
@@ -424,15 +398,11 @@ public class RoutingSheetsController : ControllerBase
                 o.Code,
                 o.Name,
                 o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
                 o.PerformerId,
                 o.Price,
-                o.Sum,
                 o.Quantity,
                 o.Status != null ? new OperationStatusDto(o.Status.Id, o.Status.Code, o.Status.Name) : null,
-                o.Guild != null ? new GuildDto(o.Guild.Id, o.Guild.Name) : null,
-                o.OperationType != null ? new OperationTypeDto(o.OperationType.Id, o.OperationType.Name) : null,
+                sheet.PlanPosition?.Guild != null ? new GuildDto(sheet.PlanPosition.Guild.Id, sheet.PlanPosition.Guild.Name) : null,
                 o.Performer != null ? new PerformerDto(o.Performer.Id, o.Performer.FullName, o.Performer.Role) : null
             )).ToList());
     }

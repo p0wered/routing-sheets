@@ -39,9 +39,6 @@ public class PartsController : ControllerBase
     {
         var part = await _context.Parts
             .Include(p => p.PartOperations)
-                .ThenInclude(po => po.OperationType)
-            .Include(p => p.PartOperations)
-                .ThenInclude(po => po.Guild)
             .Where(p => p.Id == id)
             .Select(p => new PartDto(
                 p.Id,
@@ -55,11 +52,7 @@ public class PartsController : ControllerBase
                         po.SeqNumber,
                         po.Name,
                         po.Code,
-                        po.OperationTypeId,
-                        po.GuildId,
-                        po.Price,
-                        po.OperationType != null ? po.OperationType.Name : null,
-                        po.Guild != null ? po.Guild.Name : null))
+                        po.Price))
                     .ToList()))
             .FirstOrDefaultAsync();
 

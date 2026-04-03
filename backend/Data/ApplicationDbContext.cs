@@ -14,7 +14,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<RoutingSheetStatus> RoutingSheetStatuses { get; set; }
     public DbSet<OperationStatus> OperationStatuses { get; set; }
     public DbSet<Guild> Guilds { get; set; }
-    public DbSet<OperationType> OperationTypes { get; set; }
     public DbSet<Performer> Performers { get; set; }
     public DbSet<ProductItem> ProductItems { get; set; }
     public DbSet<PlanPosition> PlanPositions { get; set; }
@@ -60,13 +59,6 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(rs => rs.PlanPositionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // RoutingSheet -> ProductItem
-        modelBuilder.Entity<RoutingSheet>()
-            .HasOne(rs => rs.ProductItem)
-            .WithMany(pi => pi.RoutingSheets)
-            .HasForeignKey(rs => rs.ProductItemId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         // RoutingSheet -> Part
         modelBuilder.Entity<RoutingSheet>()
             .HasOne(rs => rs.Part)
@@ -102,20 +94,6 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(o => o.StatusId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Operation -> Guild
-        modelBuilder.Entity<Operation>()
-            .HasOne(o => o.Guild)
-            .WithMany(g => g.Operations)
-            .HasForeignKey(o => o.GuildId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Operation -> OperationType
-        modelBuilder.Entity<Operation>()
-            .HasOne(o => o.OperationType)
-            .WithMany(ot => ot.Operations)
-            .HasForeignKey(o => o.OperationTypeId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         // Operation -> Performer
         modelBuilder.Entity<Operation>()
             .HasOne(o => o.Performer)
@@ -136,20 +114,6 @@ public class ApplicationDbContext : DbContext
             .WithMany(p => p.PartOperations)
             .HasForeignKey(po => po.PartId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        // PartOperation -> OperationType
-        modelBuilder.Entity<PartOperation>()
-            .HasOne(po => po.OperationType)
-            .WithMany(ot => ot.PartOperations)
-            .HasForeignKey(po => po.OperationTypeId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // PartOperation -> Guild
-        modelBuilder.Entity<PartOperation>()
-            .HasOne(po => po.Guild)
-            .WithMany(g => g.PartOperations)
-            .HasForeignKey(po => po.GuildId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // ProductPart -> ProductItem
         modelBuilder.Entity<ProductPart>()
@@ -231,15 +195,6 @@ public class ApplicationDbContext : DbContext
             new Guild { Id = 3, Name = "Сварочный цех №3" }
         );
 
-        // OperationTypes
-        modelBuilder.Entity<OperationType>().HasData(
-            new OperationType { Id = 1, Name = "Сборка" },
-            new OperationType { Id = 2, Name = "Сварка" },
-            new OperationType { Id = 3, Name = "Токарная обработка" },
-            new OperationType { Id = 4, Name = "Фрезерная обработка" },
-            new OperationType { Id = 5, Name = "Контроль качества" }
-        );
-
         // Performers
         modelBuilder.Entity<Performer>().HasData(
             new Performer { Id = 1, FullName = "Иванов Иван Иванович", Role = "Слесарь-сборщик" },
@@ -267,20 +222,20 @@ public class ApplicationDbContext : DbContext
         // PartOperations
         modelBuilder.Entity<PartOperation>().HasData(
             // Корпус: 2 операции
-            new PartOperation { Id = 1, PartId = 1, SeqNumber = 1, Name = "Фрезеровка корпуса", Code = "ПО-001", OperationTypeId = 4, GuildId = 2, Price = 300.00m },
-            new PartOperation { Id = 2, PartId = 1, SeqNumber = 2, Name = "Контроль корпуса", Code = "ПО-002", OperationTypeId = 5, GuildId = 2, Price = 50.00m },
+            new PartOperation { Id = 1, PartId = 1, SeqNumber = 1, Name = "Фрезеровка корпуса", Code = "ПО-001", Price = 300.00m },
+            new PartOperation { Id = 2, PartId = 1, SeqNumber = 2, Name = "Контроль корпуса", Code = "ПО-002", Price = 50.00m },
             // Крышка: 2 операции
-            new PartOperation { Id = 3, PartId = 2, SeqNumber = 1, Name = "Штамповка заготовки крышки", Code = "ПО-003", OperationTypeId = 1, GuildId = 1, Price = 30.00m },
-            new PartOperation { Id = 4, PartId = 2, SeqNumber = 2, Name = "Шлифовка крышки", Code = "ПО-004", OperationTypeId = 4, GuildId = 2, Price = 20.00m },
+            new PartOperation { Id = 3, PartId = 2, SeqNumber = 1, Name = "Штамповка заготовки крышки", Code = "ПО-003", Price = 30.00m },
+            new PartOperation { Id = 4, PartId = 2, SeqNumber = 2, Name = "Шлифовка крышки", Code = "ПО-004", Price = 20.00m },
             // Вал: 1 операция
-            new PartOperation { Id = 5, PartId = 3, SeqNumber = 1, Name = "Токарная обработка вала", Code = "ПО-005", OperationTypeId = 3, GuildId = 2, Price = 250.00m },
+            new PartOperation { Id = 5, PartId = 3, SeqNumber = 1, Name = "Токарная обработка вала", Code = "ПО-005", Price = 250.00m },
             // Шестерня: 2 операции
-            new PartOperation { Id = 6, PartId = 4, SeqNumber = 1, Name = "Фрезеровка шестерни", Code = "ПО-006", OperationTypeId = 4, GuildId = 2, Price = 180.00m },
-            new PartOperation { Id = 7, PartId = 4, SeqNumber = 2, Name = "Термообработка шестерни", Code = "ПО-007", OperationTypeId = 2, GuildId = 3, Price = 100.00m },
+            new PartOperation { Id = 6, PartId = 4, SeqNumber = 1, Name = "Фрезеровка шестерни", Code = "ПО-006", Price = 180.00m },
+            new PartOperation { Id = 7, PartId = 4, SeqNumber = 2, Name = "Термообработка шестерни", Code = "ПО-007", Price = 100.00m },
             // Подшипник: 1 операция
-            new PartOperation { Id = 8, PartId = 5, SeqNumber = 1, Name = "Контроль подшипника", Code = "ПО-008", OperationTypeId = 5, GuildId = 1, Price = 20.00m },
+            new PartOperation { Id = 8, PartId = 5, SeqNumber = 1, Name = "Контроль подшипника", Code = "ПО-008", Price = 20.00m },
             // Болт М6: 1 операция
-            new PartOperation { Id = 9, PartId = 6, SeqNumber = 1, Name = "Токарная обработка болта", Code = "ПО-009", OperationTypeId = 3, GuildId = 2, Price = 10.00m }
+            new PartOperation { Id = 9, PartId = 6, SeqNumber = 1, Name = "Токарная обработка болта", Code = "ПО-009", Price = 10.00m }
         );
 
         // ProductParts (состав изделий)

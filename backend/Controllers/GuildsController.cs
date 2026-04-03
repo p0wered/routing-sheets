@@ -88,9 +88,10 @@ public class GuildsController : ControllerBase
             return NotFound();
 
         // Check if guild is used
-        var isUsed = await _context.Operations.AnyAsync(o => o.GuildId == id);
+        var isUsed = await _context.PlanPositions.AnyAsync(p => p.GuildId == id)
+            || await _context.Users.AnyAsync(u => u.GuildId == id);
         if (isUsed)
-            return BadRequest("Цех используется в операциях и не может быть удален");
+            return BadRequest("Цех используется в планах или пользователях и не может быть удален");
 
         _context.Guilds.Remove(guild);
         await _context.SaveChangesAsync();
@@ -98,4 +99,3 @@ public class GuildsController : ControllerBase
         return NoContent();
     }
 }
-

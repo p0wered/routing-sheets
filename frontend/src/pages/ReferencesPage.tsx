@@ -12,17 +12,15 @@ import { Pencil, Trash2, Plus, X } from 'lucide-react';
 import {
   unitsApi,
   guildsApi,
-  operationTypesApi,
   performersApi,
 } from '../api/references';
 import { toast, extractError } from '../utils/toast';
 
-const TABS: ReferenceTab[] = ['units', 'guilds', 'operationTypes', 'performers'];
+const TABS: ReferenceTab[] = ['units', 'guilds', 'performers'];
 
 const namedApis = {
   units: unitsApi,
   guilds: guildsApi,
-  operationTypes: operationTypesApi,
 } as const;
 
 type NamedTab = keyof typeof namedApis;

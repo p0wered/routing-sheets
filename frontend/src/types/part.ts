@@ -4,11 +4,7 @@ export interface PartOperation {
   seqNumber: number;
   name: string;
   code: string | null;
-  operationTypeId: number | null;
-  guildId: number | null;
   price: number | null;
-  operationTypeName: string | null;
-  guildName: string | null;
 }
 
 export interface Part {

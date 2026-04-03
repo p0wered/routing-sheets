@@ -230,7 +230,6 @@ export default function OperationsByGuildPage() {
                       <th className="px-4 py-3 font-semibold text-gray-600 w-10">{t('common.numberSign')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600">{t('common.code')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600">{t('common.name')}</th>
-                      <th className="px-4 py-3 font-semibold text-gray-600">{t('common.type')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600">{t('common.performer')}</th>
                       <th className="px-4 py-3 font-semibold text-gray-600 text-center">
                         {t('common.quantityShort')}
@@ -264,9 +263,6 @@ export default function OperationsByGuildPage() {
                             {op.name}
                           </td>
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                            {op.operationTypeName ?? '—'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                             <div className="flex items-center gap-1">
                               <span className="truncate max-w-[120px]">
                                 {op.performerName ?? '—'}
@@ -293,7 +289,7 @@ export default function OperationsByGuildPage() {
                             {op.price != null ? op.price.toFixed(2) : '—'}
                           </td>
                           <td className="px-4 py-3 text-gray-600 text-right whitespace-nowrap">
-                            {op.sum != null ? op.sum.toFixed(2) : '—'}
+                            {op.price != null ? (op.price * op.quantity).toFixed(2) : '—'}
                           </td>
                           <td className="px-4 py-3 text-center whitespace-nowrap">
                             <OpStatusBadge

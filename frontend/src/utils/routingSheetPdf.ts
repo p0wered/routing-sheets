@@ -36,7 +36,6 @@ export interface SingleSheetPdfLabels {
   colSeq: string;
   colCode: string;
   colName: string;
-  colType: string;
   colGuild: string;
   colQty: string;
   colPrice: string;
@@ -137,7 +136,6 @@ function buildSingleSheetDoc(sheet: RoutingSheetDetail, labels: SingleSheetPdfLa
     labels.colSeq,
     labels.colCode,
     labels.colName,
-    labels.colType,
     labels.colGuild,
     labels.colQty,
     labels.colPrice,
@@ -151,11 +149,10 @@ function buildSingleSheetDoc(sheet: RoutingSheetDetail, labels: SingleSheetPdfLa
       o.seqNumber,
       o.code ?? labels.emptyDash,
       o.name,
-      o.operationType?.name ?? labels.emptyDash,
       o.guild?.name ?? labels.emptyDash,
       o.quantity,
       o.price ?? labels.emptyDash,
-      o.sum ?? labels.emptyDash,
+      o.price != null ? o.price * o.quantity : labels.emptyDash,
       o.status?.name ?? labels.emptyDash,
       o.performer?.fullName ?? labels.emptyDash,
     ]),
@@ -170,7 +167,7 @@ function buildSingleSheetDoc(sheet: RoutingSheetDetail, labels: SingleSheetPdfLa
     {
       table: {
         headerRows: 1,
-        widths: [22, 36, '*', 50, 50, 32, 36, 36, 44, 52],
+        widths: [22, 36, '*', 50, 32, 36, 36, 44, 52],
         body: opBody,
       },
       layout: 'lightHorizontalLines',

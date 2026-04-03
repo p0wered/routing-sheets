@@ -3,7 +3,6 @@ export interface RoutingSheetListItem {
   number: string;
   name: string;
   planPositionId: number | null;
-  productItemId: number | null;
   partId: number | null;
   statusId: number;
   quantity: number;
@@ -50,7 +49,6 @@ export interface RoutingSheetDetail {
   number: string;
   name: string;
   planPositionId: number | null;
-  productItemId: number | null;
   partId: number | null;
   unitId: number | null;
   statusId: number;
@@ -78,15 +76,11 @@ export interface OperationDto {
   code: string | null;
   name: string;
   statusId: number | null;
-  guildId: number | null;
-  operationTypeId: number | null;
   performerId: number | null;
   price: number | null;
-  sum: number | null;
   quantity: number;
   status: OperationStatus | null;
   guild: { id: number; name: string } | null;
-  operationType: { id: number; name: string } | null;
   performer: { id: number; fullName: string; role: string | null } | null;
 }
 
@@ -97,15 +91,11 @@ export interface OperationListItem {
   code: string | null;
   name: string;
   statusId: number | null;
-  guildId: number | null;
-  operationTypeId: number | null;
   performerId: number | null;
   price: number | null;
-  sum: number | null;
   quantity: number;
   statusName: string | null;
   guildName: string | null;
-  operationTypeName: string | null;
   performerName: string | null;
   routingSheetNumber: string | null;
 }
