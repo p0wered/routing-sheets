@@ -264,7 +264,7 @@ export default function OperationsByGuildPage() {
                           </td>
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                             <div className="flex items-center gap-1">
-                              <span className="truncate max-w-[120px]">
+                              <span className="truncate max-w-[220px]">
                                 {op.performerName ?? '—'}
                               </span>
                               {canAssignPerformer && !op.performerId && (

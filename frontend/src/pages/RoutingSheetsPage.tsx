@@ -61,7 +61,6 @@ type OpSortField =
   | 'seqNumber'
   | 'code'
   | 'name'
-  | 'guildName'
   | 'performerName'
   | 'quantity'
   | 'price'
@@ -1064,7 +1063,6 @@ function PlanRow({
                                       <SortTh field="seqNumber" label={t('common.numberSign')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} className="w-10" />
                                       <SortTh field="code" label={t('common.code')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="name" label={t('common.name')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
-                                      <SortTh field="guildName" label={t('common.guild')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="performerName" label={t('common.performer')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} />
                                       <SortTh field="quantity" label={t('common.quantityShort')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="center" />
                                       <SortTh field="price" label={t('common.price')} current={opSortField} dir={opSortDir} onSort={onToggleOpSort} align="right" />
@@ -1098,11 +1096,8 @@ function PlanRow({
                                             {op.name}
                                           </td>
                                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                            {op.guildName ?? '—'}
-                                          </td>
-                                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                                             <div className="flex items-center gap-1">
-                                              <span className="truncate max-w-[120px]">
+                                              <span className="truncate max-w-[220px]">
                                                 {op.performerName ?? '—'}
                                               </span>
                                               {canAssignPerformer && !op.performerId && (
