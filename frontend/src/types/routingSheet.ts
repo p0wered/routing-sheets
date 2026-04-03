@@ -4,12 +4,14 @@ export interface RoutingSheetListItem {
   name: string;
   planPositionId: number | null;
   productItemId: number | null;
+  partId: number | null;
   statusId: number;
   quantity: number;
   createdAt: string;
   statusName: string | null;
   planPositionName: string | null;
   productItemName: string | null;
+  partName: string | null;
   unitName: string | null;
 }
 
@@ -49,6 +51,7 @@ export interface RoutingSheetDetail {
   name: string;
   planPositionId: number | null;
   productItemId: number | null;
+  partId: number | null;
   unitId: number | null;
   statusId: number;
   quantity: number;
@@ -56,6 +59,7 @@ export interface RoutingSheetDetail {
   updatedAt: string | null;
   planPosition?: PlanPositionInRoutingSheet | null;
   productItem?: ProductItem | null;
+  part?: { id: number; name: string; description: string | null } | null;
   unit?: { id: number; name: string } | null;
   status?: RoutingSheetStatus | null;
   operations?: OperationDto[];

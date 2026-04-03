@@ -6,6 +6,7 @@ public record RoutingSheetDto(
     string Name,
     int? PlanPositionId,
     int? ProductItemId,
+    int? PartId,
     int? UnitId,
     int StatusId,
     int Quantity,
@@ -13,6 +14,7 @@ public record RoutingSheetDto(
     DateTime? UpdatedAt,
     PlanPositionListDto? PlanPosition,
     ProductItemDto? ProductItem,
+    PartRefDto? Part,
     UnitDto? Unit,
     RoutingSheetStatusDto? Status,
     List<OperationDto>? Operations);
@@ -23,16 +25,17 @@ public record RoutingSheetListDto(
     string Name,
     int? PlanPositionId,
     int? ProductItemId,
+    int? PartId,
     int StatusId,
     int Quantity,
     DateTime CreatedAt,
     string? StatusName,
     string? PlanPositionName,
     string? ProductItemName,
+    string? PartName,
     string? UnitName);
 
 
 public record ChangeStatusDto(int StatusId);
 
 public record SplitQuantityDto(int SplitQuantity);
-

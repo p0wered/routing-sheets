@@ -67,6 +67,13 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(rs => rs.ProductItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // RoutingSheet -> Part
+        modelBuilder.Entity<RoutingSheet>()
+            .HasOne(rs => rs.Part)
+            .WithMany(p => p.RoutingSheets)
+            .HasForeignKey(rs => rs.PartId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // RoutingSheet -> Unit
         modelBuilder.Entity<RoutingSheet>()
             .HasOne(rs => rs.Unit)
@@ -166,6 +173,10 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<RoutingSheet>()
             .HasIndex(rs => rs.Number)
+            .IsUnique();
+
+        modelBuilder.Entity<RoutingSheet>()
+            .HasIndex(rs => new { rs.PlanPositionId, rs.PartId })
             .IsUnique();
 
         modelBuilder.Entity<PlanPosition>()

@@ -24,6 +24,7 @@ public class RoutingSheetsController : ControllerBase
     public async Task<ActionResult<IEnumerable<RoutingSheetListDto>>> GetAll(
         [FromQuery] int? planPositionId = null,
         [FromQuery] int? productItemId = null,
+        [FromQuery] int? partId = null,
         [FromQuery] int? guildId = null,
         [FromQuery] DateTime? createdFrom = null,
         [FromQuery] DateTime? createdTo = null)
@@ -32,6 +33,7 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.Status)
             .Include(rs => rs.PlanPosition)
             .Include(rs => rs.ProductItem)
+            .Include(rs => rs.Part)
             .Include(rs => rs.Unit)
             .AsQueryable();
 
@@ -54,6 +56,9 @@ public class RoutingSheetsController : ControllerBase
         if (productItemId.HasValue)
             query = query.Where(rs => rs.ProductItemId == productItemId.Value);
 
+        if (partId.HasValue)
+            query = query.Where(rs => rs.PartId == partId.Value);
+
         if (createdFrom.HasValue)
             query = query.Where(rs => rs.CreatedAt >= createdFrom.Value);
 
@@ -67,12 +72,14 @@ public class RoutingSheetsController : ControllerBase
                 rs.Name,
                 rs.PlanPositionId,
                 rs.ProductItemId,
+                rs.PartId,
                 rs.StatusId,
                 rs.Quantity,
                 rs.CreatedAt,
                 rs.Status != null ? rs.Status.Name : null,
                 rs.PlanPosition != null ? rs.PlanPosition.Name : null,
                 rs.ProductItem != null ? rs.ProductItem.Name : null,
+                rs.Part != null ? rs.Part.Name : null,
                 rs.Unit != null ? rs.Unit.Name : null))
             .ToListAsync();
 
@@ -88,6 +95,7 @@ public class RoutingSheetsController : ControllerBase
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Status)
             .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
             .Include(rs => rs.ProductItem)
+            .Include(rs => rs.Part)
             .Include(rs => rs.Unit)
             .Include(rs => rs.Operations).ThenInclude(o => o.Status)
             .Include(rs => rs.Operations).ThenInclude(o => o.Guild)
@@ -99,68 +107,12 @@ public class RoutingSheetsController : ControllerBase
         if (sheet == null)
             return NotFound();
 
-        var dto = new RoutingSheetDto(
-            sheet.Id,
-            sheet.Number,
-            sheet.Name,
-            sheet.PlanPositionId,
-            sheet.ProductItemId,
-            sheet.UnitId,
-            sheet.StatusId,
-            sheet.Quantity,
-            sheet.CreatedAt,
-            sheet.UpdatedAt,
-            sheet.PlanPosition != null
-                ? new PlanPositionListDto(
-                    sheet.PlanPosition.Id,
-                    sheet.PlanPosition.DocumentNumber,
-                    sheet.PlanPosition.DocumentDate,
-                    sheet.PlanPosition.PlanMonth,
-                    sheet.PlanPosition.PlanYear,
-                    sheet.PlanPosition.PositionCode,
-                    sheet.PlanPosition.Name,
-                    sheet.PlanPosition.ProductItemId,
-                    sheet.PlanPosition.QuantityPlanned,
-                    sheet.PlanPosition.GuildId,
-                    sheet.PlanPosition.StatusId,
-                    sheet.PlanPosition.Guild?.Name,
-                    sheet.PlanPosition.Status?.Name,
-                    sheet.PlanPosition.ProductItem?.Name)
-                : null,
-            sheet.ProductItem != null
-                ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description)
-                : null,
-            sheet.Unit != null
-                ? new UnitDto(sheet.Unit.Id, sheet.Unit.Name)
-                : null,
-            sheet.Status != null
-                ? new RoutingSheetStatusDto(sheet.Status.Id, sheet.Status.Code, sheet.Status.Name)
-                : null,
-            sheet.Operations.OrderBy(o => o.SeqNumber).Select(o => new OperationDto(
-                o.Id,
-                o.RoutingSheetId,
-                o.SeqNumber,
-                o.Code,
-                o.Name,
-                o.StatusId,
-                o.GuildId,
-                o.OperationTypeId,
-                o.PerformerId,
-                o.Price,
-                o.Sum,
-                o.Quantity,
-                o.Status != null ? new OperationStatusDto(o.Status.Id, o.Status.Code, o.Status.Name) : null,
-                o.Guild != null ? new GuildDto(o.Guild.Id, o.Guild.Name) : null,
-                o.OperationType != null ? new OperationTypeDto(o.OperationType.Id, o.OperationType.Name) : null,
-                o.Performer != null ? new PerformerDto(o.Performer.Id, o.Performer.FullName, o.Performer.Role) : null
-            )).ToList());
-
-        return Ok(dto);
+        return Ok(MapRoutingSheetDto(sheet));
     }
 
     [HttpPost("generate/{planPositionId}")]
     [Authorize(Roles = $"{UserRoles.WorkshopChief},{UserRoles.PlanningDept}")]
-    public async Task<ActionResult<RoutingSheetDto>> Generate(int planPositionId)
+    public async Task<ActionResult<IEnumerable<RoutingSheetDto>>> Generate(int planPositionId)
     {
         var planPosition = await _context.PlanPositions
             .Include(pp => pp.ProductItem)
@@ -177,7 +129,7 @@ public class RoutingSheetsController : ControllerBase
         var existingSheet = await _context.RoutingSheets
             .AnyAsync(rs => rs.PlanPositionId == planPositionId);
         if (existingSheet)
-            return BadRequest("Для этого плана уже сформирован маршрутный лист");
+            return BadRequest("Для этого плана уже сформированы маршрутные листы");
 
         // Check guild access for WorkshopChief
         var userGuildId = GetCurrentUserGuildId();
@@ -193,17 +145,29 @@ public class RoutingSheetsController : ControllerBase
             .OrderBy(pp => pp.PartId)
             .ToListAsync();
 
-        // Build operations from part operations
-        var operations = new List<Operation>();
-        int seqNumber = 1;
+        if (productParts.Count == 0)
+            return BadRequest("Для изделия не задан состав деталей");
+
+        var createdSheetIds = new List<int>();
 
         foreach (var productPart in productParts)
         {
-            if (productPart.Part?.PartOperations == null) continue;
+            if (productPart.Part == null)
+                continue;
 
-            foreach (var partOp in productPart.Part.PartOperations.OrderBy(po => po.SeqNumber))
+            var partOperations = productPart.Part.PartOperations
+                .OrderBy(po => po.SeqNumber)
+                .ToList();
+
+            if (partOperations.Count == 0)
+                return BadRequest($"Для детали «{productPart.Part.Name}» не заданы технологические операции");
+
+            var detailQuantity = productPart.Quantity * planPosition.QuantityPlanned;
+            var operations = new List<Operation>();
+            int seqNumber = 1;
+
+            foreach (var partOp in partOperations)
             {
-                var quantity = productPart.Quantity * planPosition.QuantityPlanned;
                 operations.Add(new Operation
                 {
                     SeqNumber = seqNumber++,
@@ -212,34 +176,50 @@ public class RoutingSheetsController : ControllerBase
                     OperationTypeId = partOp.OperationTypeId,
                     GuildId = partOp.GuildId,
                     Price = partOp.Price,
-                    Quantity = quantity,
-                    Sum = partOp.Price.HasValue ? partOp.Price.Value * quantity : null,
+                    Quantity = detailQuantity,
+                    Sum = partOp.Price.HasValue ? partOp.Price.Value * detailQuantity : null,
                     StatusId = 1 // PENDING
                 });
             }
+
+            var number = await GenerateRoutingSheetNumber();
+
+            var sheet = new RoutingSheet
+            {
+                Number = number,
+                Name = $"МЛ на деталь {productPart.Part.Name}",
+                PlanPositionId = planPositionId,
+                ProductItemId = planPosition.ProductItemId,
+                PartId = productPart.PartId,
+                UnitId = 1, // шт.
+                StatusId = 1, // DRAFT
+                Quantity = detailQuantity,
+                CreatedAt = DateTime.UtcNow,
+                Operations = operations
+            };
+
+            _context.RoutingSheets.Add(sheet);
+            await _context.SaveChangesAsync();
+            createdSheetIds.Add(sheet.Id);
         }
 
-        // Generate unique number
-        var number = await GenerateRoutingSheetNumber();
+        var createdSheets = await _context.RoutingSheets
+            .Include(rs => rs.Status)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Guild)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.Status)
+            .Include(rs => rs.PlanPosition).ThenInclude(pp => pp!.ProductItem)
+            .Include(rs => rs.ProductItem)
+            .Include(rs => rs.Part)
+            .Include(rs => rs.Unit)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Status)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Guild)
+            .Include(rs => rs.Operations).ThenInclude(o => o.OperationType)
+            .Include(rs => rs.Operations).ThenInclude(o => o.Performer)
+            .Where(rs => createdSheetIds.Contains(rs.Id))
+            .OrderBy(rs => rs.Id)
+            .ToListAsync();
 
-        var sheet = new RoutingSheet
-        {
-            Number = number,
-            Name = $"МЛ для {planPosition.ProductItem?.Name ?? "изделия"}",
-            PlanPositionId = planPositionId,
-            ProductItemId = planPosition.ProductItemId,
-            UnitId = 1, // шт.
-            StatusId = 1, // DRAFT
-            Quantity = planPosition.QuantityPlanned,
-            CreatedAt = DateTime.UtcNow,
-            Operations = operations
-        };
-
-        _context.RoutingSheets.Add(sheet);
-        await _context.SaveChangesAsync();
-
-        // Reload with all navigation properties for response
-        return await GetById(sheet.Id);
+        return Ok(createdSheets.Select(MapRoutingSheetDto).ToList());
     }
 
     [HttpPatch("{id}/status")]
@@ -317,6 +297,7 @@ public class RoutingSheetsController : ControllerBase
             Name = sourceSheet.Name,
             PlanPositionId = sourceSheet.PlanPositionId,
             ProductItemId = sourceSheet.ProductItemId,
+            PartId = sourceSheet.PartId,
             UnitId = sourceSheet.UnitId,
             StatusId = 1, // DRAFT
             Quantity = dto.SplitQuantity,
@@ -391,5 +372,68 @@ public class RoutingSheetsController : ControllerBase
         }
 
         return $"{prefix}{nextSeq:D4}";
+    }
+
+    private static RoutingSheetDto MapRoutingSheetDto(RoutingSheet sheet)
+    {
+        return new RoutingSheetDto(
+            sheet.Id,
+            sheet.Number,
+            sheet.Name,
+            sheet.PlanPositionId,
+            sheet.ProductItemId,
+            sheet.PartId,
+            sheet.UnitId,
+            sheet.StatusId,
+            sheet.Quantity,
+            sheet.CreatedAt,
+            sheet.UpdatedAt,
+            sheet.PlanPosition != null
+                ? new PlanPositionListDto(
+                    sheet.PlanPosition.Id,
+                    sheet.PlanPosition.DocumentNumber,
+                    sheet.PlanPosition.DocumentDate,
+                    sheet.PlanPosition.PlanMonth,
+                    sheet.PlanPosition.PlanYear,
+                    sheet.PlanPosition.PositionCode,
+                    sheet.PlanPosition.Name,
+                    sheet.PlanPosition.ProductItemId,
+                    sheet.PlanPosition.QuantityPlanned,
+                    sheet.PlanPosition.GuildId,
+                    sheet.PlanPosition.StatusId,
+                    sheet.PlanPosition.Guild?.Name,
+                    sheet.PlanPosition.Status?.Name,
+                    sheet.PlanPosition.ProductItem?.Name)
+                : null,
+            sheet.ProductItem != null
+                ? new ProductItemDto(sheet.ProductItem.Id, sheet.ProductItem.Name, sheet.ProductItem.Description)
+                : null,
+            sheet.Part != null
+                ? new PartRefDto(sheet.Part.Id, sheet.Part.Name, sheet.Part.Description)
+                : null,
+            sheet.Unit != null
+                ? new UnitDto(sheet.Unit.Id, sheet.Unit.Name)
+                : null,
+            sheet.Status != null
+                ? new RoutingSheetStatusDto(sheet.Status.Id, sheet.Status.Code, sheet.Status.Name)
+                : null,
+            sheet.Operations.OrderBy(o => o.SeqNumber).Select(o => new OperationDto(
+                o.Id,
+                o.RoutingSheetId,
+                o.SeqNumber,
+                o.Code,
+                o.Name,
+                o.StatusId,
+                o.GuildId,
+                o.OperationTypeId,
+                o.PerformerId,
+                o.Price,
+                o.Sum,
+                o.Quantity,
+                o.Status != null ? new OperationStatusDto(o.Status.Id, o.Status.Code, o.Status.Name) : null,
+                o.Guild != null ? new GuildDto(o.Guild.Id, o.Guild.Name) : null,
+                o.OperationType != null ? new OperationTypeDto(o.OperationType.Id, o.OperationType.Name) : null,
+                o.Performer != null ? new PerformerDto(o.Performer.Id, o.Performer.FullName, o.Performer.Role) : null
+            )).ToList());
     }
 }

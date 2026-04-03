@@ -18,6 +18,11 @@ public record PartDto(
     string? Description,
     List<PartOperationDto> Operations);
 
+public record PartRefDto(
+    int Id,
+    string Name,
+    string? Description);
+
 public record PartListDto(
     int Id,
     string Name,

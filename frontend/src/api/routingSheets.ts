@@ -11,6 +11,7 @@ import type {
 export async function getRoutingSheets(params?: {
   planPositionId?: number;
   productItemId?: number;
+  partId?: number;
   guildId?: number;
   /** ISO 8601, фильтр по дате создания МЛ (включительно, сравнение с UTC на сервере) */
   createdFrom?: string;
@@ -27,7 +28,7 @@ export async function getRoutingSheetById(id: number) {
 }
 
 export async function generateRoutingSheet(planPositionId: number) {
-  const res = await apiClient.post<RoutingSheetDetail>(
+  const res = await apiClient.post<RoutingSheetDetail[]>(
     `/RoutingSheets/generate/${planPositionId}`,
   );
   return res.data;

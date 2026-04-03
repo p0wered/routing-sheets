@@ -777,6 +777,10 @@ namespace RoutingSheetsNew.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PartId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("part_id");
+
                     b.Property<int?>("PlanPositionId")
                         .HasColumnType("INTEGER")
                         .HasColumnName("plan_position_id");
@@ -804,7 +808,12 @@ namespace RoutingSheetsNew.Migrations
                     b.HasIndex("Number")
                         .IsUnique();
 
+                    b.HasIndex("PartId");
+
                     b.HasIndex("PlanPositionId");
+
+                    b.HasIndex("PlanPositionId", "PartId")
+                        .IsUnique();
 
                     b.HasIndex("ProductItemId");
 
@@ -1046,6 +1055,11 @@ namespace RoutingSheetsNew.Migrations
 
             modelBuilder.Entity("RoutingSheetsNew.Models.RoutingSheet", b =>
                 {
+                    b.HasOne("RoutingSheetsNew.Models.Part", "Part")
+                        .WithMany("RoutingSheets")
+                        .HasForeignKey("PartId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RoutingSheetsNew.Models.PlanPosition", "PlanPosition")
                         .WithMany("RoutingSheets")
                         .HasForeignKey("PlanPositionId")
@@ -1068,6 +1082,8 @@ namespace RoutingSheetsNew.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("PlanPosition");
+
+                    b.Navigation("Part");
 
                     b.Navigation("ProductItem");
 
@@ -1114,6 +1130,8 @@ namespace RoutingSheetsNew.Migrations
                     b.Navigation("PartOperations");
 
                     b.Navigation("ProductParts");
+
+                    b.Navigation("RoutingSheets");
                 });
 
             modelBuilder.Entity("RoutingSheetsNew.Models.Performer", b =>

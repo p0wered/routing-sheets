@@ -19,4 +19,5 @@ public class Part
     // Navigation properties
     public virtual ICollection<PartOperation> PartOperations { get; set; } = new List<PartOperation>();
     public virtual ICollection<ProductPart> ProductParts { get; set; } = new List<ProductPart>();
+    public virtual ICollection<RoutingSheet> RoutingSheets { get; set; } = new List<RoutingSheet>();
 }

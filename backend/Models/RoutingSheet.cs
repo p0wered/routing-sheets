@@ -26,6 +26,9 @@ public class RoutingSheet
     [Column("product_item_id")]
     public int? ProductItemId { get; set; }
 
+    [Column("part_id")]
+    public int? PartId { get; set; }
+
     [Column("unit_id")]
     public int? UnitId { get; set; }
 
@@ -45,6 +48,9 @@ public class RoutingSheet
     [ForeignKey(nameof(ProductItemId))]
     public virtual ProductItem? ProductItem { get; set; }
 
+    [ForeignKey(nameof(PartId))]
+    public virtual Part? Part { get; set; }
+
     [ForeignKey(nameof(UnitId))]
     public virtual Unit? Unit { get; set; }
 
@@ -53,4 +59,3 @@ public class RoutingSheet
 
     public virtual ICollection<Operation> Operations { get; set; } = new List<Operation>();
 }
-
