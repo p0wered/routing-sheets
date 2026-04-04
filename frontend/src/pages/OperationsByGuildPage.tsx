@@ -6,10 +6,10 @@ import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { OperationListItem, OperationStatus } from '../types/routingSheet';
 import { OP_STATUS_COLORS } from '../types/routingSheet';
 import { RoutingHeader } from '../components/Header';
-import { Select } from '../components/DropdownSelector';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { SplitQuantityModal } from '../components/SplitQuantityModal';
-import { Spinner } from '../components/Spinner';
+import { Select } from '../components/ui/DropdownSelector';
+import { ConfirmDialog } from '../components/modals/ConfirmDialog';
+import { SplitQuantityModal } from '../components/modals/SplitQuantityModal';
+import { Spinner } from '../components/ui/Spinner';
 import { guildsApi, performersApi } from '../api/references';
 import {
   getOperationsByGuild,
@@ -19,7 +19,7 @@ import {
   splitOperation,
 } from '../api/operations';
 import { toast, extractError } from '../utils/toast';
-import { Button } from '../components/Button';
+import { Button } from '../components/ui/Button';
 import {
   Play,
   CircleCheck,

@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast, extractError } from '../utils/toast';
-import { Button } from '../components/Button';
-import { TextInput } from '../components/TextInput';
+import { Button } from '../components/ui/Button';
+import { TextInput } from '../components/ui/TextInput';
 import { LanguageToggle } from '../components/LanguageToggle';
 
 export default function LoginPage() {

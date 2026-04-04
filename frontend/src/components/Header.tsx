@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { User } from '../types/auth';
 import { Menu } from 'lucide-react';
-import { DropdownList } from './DropdownList';
+import { DropdownList } from './ui/DropdownList';
 import { LanguageToggle } from './LanguageToggle';
 
 interface RoutingHeaderProps {

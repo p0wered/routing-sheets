@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nDocumentSync } from './components/I18nDocumentSync';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import { Spinner } from './components/Spinner';
+import { Spinner } from './components/ui/Spinner';
 import LoginPage from './pages/LoginPage';
 import RoutingSheetsPage from './pages/RoutingSheetsPage';
 import OperationsByGuildPage from './pages/OperationsByGuildPage';

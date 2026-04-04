@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
-import type { User } from '../types/auth';
-import { USER_ROLE_KEYS } from '../types/auth';
-import type { NamedReference } from '../types/references';
-import { Modal } from './Modal';
-import { TextInput } from './TextInput';
-import { Select, type SelectOption } from './DropdownSelector';
-import { Button } from './Button';
+import type { User } from '../../types/auth';
+import { USER_ROLE_KEYS } from '../../types/auth';
+import type { NamedReference } from '../../types/references';
+import { Modal } from '../ui/Modal';
+import { TextInput } from '../ui/TextInput';
+import { Select, type SelectOption } from '../ui/DropdownSelector';
+import { Button } from '../ui/Button';
 
 interface FieldErrors {
   username?: string;

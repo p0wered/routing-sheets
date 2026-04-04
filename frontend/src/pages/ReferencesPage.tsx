@@ -5,9 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRoleLabel } from '../hooks/useRoleLabel';
 import type { NamedReference, Performer, ReferenceTab } from '../types/references';
 import { RoutingHeader } from '../components/Header';
-import { Button } from '../components/Button';
-import { ReferenceModal } from '../components/ReferenceModal';
-import { Spinner } from '../components/Spinner';
+import { Button } from '../components/ui/Button';
+import { ReferenceModal } from '../components/modals/ReferenceModal';
+import { Spinner } from '../components/ui/Spinner';
 import { Pencil, Trash2, Plus, X } from 'lucide-react';
 import {
   unitsApi,

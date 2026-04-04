@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
-import { Modal } from './Modal';
-import { TextInput } from './TextInput';
-import { Button } from './Button';
+import { Modal } from '../ui/Modal';
+import { TextInput } from '../ui/TextInput';
+import { Button } from '../ui/Button';
 
 interface FieldConfig {
   key: string;
